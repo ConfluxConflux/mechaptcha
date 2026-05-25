@@ -40,7 +40,7 @@ def apply_all(arr, active_distortions, rng):
     return arr
 
 
-def make_stacked_qa():
+def make_stacked_qa(unlabelled=False):
     print("Loading fonts...")
     fonts = load_fonts(FONT_DIR)
     font_names = sorted(fonts.keys())
