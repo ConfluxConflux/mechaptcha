@@ -33,7 +33,7 @@ def make_sample(seed, fonts, active_distortions):
     font_name = font_names[rng.integers(0, len(font_names))]
     font = fonts[font_name]
 
-    x_jitter = 6 if "spacing_jitter" in active_distortions else 0
+    x_jitter = 9 if "spacing_jitter" in active_distortions else 0
     y_jitter = 4 if "char_jitter" in active_distortions else 0
     needs_jitter = x_jitter > 0 or y_jitter > 0
     base = render_captcha(text, font,
