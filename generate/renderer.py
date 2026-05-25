@@ -1,8 +1,9 @@
 from PIL import Image, ImageDraw, ImageFont
 
-IMG_WIDTH = 250
-IMG_HEIGHT = 70
-SLOT_WIDTH = IMG_WIDTH // 5  # 50px per character slot
+IMG_WIDTH = 160
+IMG_HEIGHT = 64
+SLOT_WIDTH = IMG_WIDTH // 5  # 32px per character slot
+DEFAULT_FONT_SIZE = 28
 
 
 def render_captcha(text: str, font: ImageFont.FreeTypeFont) -> Image.Image:
