@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Layers backed by forward hooks on the CNN modules
-HOOK_LAYERS = ("conv_block_0", "conv_block_1", "conv_block_2", "pool", "embedding")
+# Layers backed by forward hooks on the CNN modules.
+# conv_block_N names are generated dynamically from the model; list up to _MAX_CONV_BLOCKS.
+_MAX_CONV_BLOCKS = 8
+HOOK_LAYERS = tuple(f"conv_block_{i}" for i in range(_MAX_CONV_BLOCKS)) + ("pool", "embedding")
 
 # Special layers captured directly during the forward pass (no hook module)
 #   "input"  — raw image pixels flattened to [B, C*H*W]; baseline before any processing
