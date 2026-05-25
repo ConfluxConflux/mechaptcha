@@ -63,7 +63,7 @@ def apply_salt_pepper(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def apply_pixelate(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    factor = rng.integers(4, 9)
+    factor = rng.integers(3, 6)
     pil = Image.fromarray(img)
     small = pil.resize((IMG_WIDTH // factor, IMG_HEIGHT // factor), Image.NEAREST)
     return np.array(small.resize((IMG_WIDTH, IMG_HEIGHT), Image.NEAREST))
