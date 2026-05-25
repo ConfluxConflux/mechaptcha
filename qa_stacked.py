@@ -102,13 +102,13 @@ def make_qa():
     print(f"Saved: {out}")
 
     # ── Unlabelled version ───────────────────────────────────────────────────
-    fig2, axes2 = plt.subplots(n_stacked, 1, figsize=(4, n_stacked * 0.85),
+    fig2, axes2 = plt.subplots(n_stacked, 1, figsize=(3.5, n_stacked * 0.9),
                                gridspec_kw={"hspace": 0.05})
     for i in range(n_stacked):
         rng = np.random.default_rng(1000 + i)
         active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
         arr, _, _ = make_sample(1000 + i, fonts, active)
-        axes2[i].imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        axes2[i].imshow(arr, cmap="gray", vmin=0, vmax=255)
         axes2[i].axis("off")
 
     plt.subplots_adjust(hspace=0.05)
