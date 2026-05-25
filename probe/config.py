@@ -51,3 +51,24 @@ class ProbeConfig:
         unknown = set(self.layers) - set(ALL_LAYERS)
         if unknown:
             raise ValueError(f"Unknown layers: {unknown}. Valid: {ALL_LAYERS}")
+
+    def for_model(self, model) -> "ProbeConfig":
+        """Return a copy with layers filtered to those that actually exist in model."""
+        available = get_model_layers(model)
+        filtered = tuple(l for l in self.layers if l in available)
+        return ProbeConfig(
+            layers=filtered,
+            classifier=self.classifier,
+            C=self.C,
+            max_iter=self.max_iter,
+            mlp_hidden_sizes=self.mlp_hidden_sizes,
+            conv_reduction=self.conv_reduction,
+            image_size=self.image_size,
+            batch_size=self.batch_size,
+        )
+
+
+def get_model_layers(model) -> tuple[str, ...]:
+    """Return the ordered probe-able layer names for a loaded CaptchaCNN."""
+    conv_names = tuple(name for name, _ in model.features.named_children())
+    return ("input",) + conv_names + ("pool", "embedding", "logits")
