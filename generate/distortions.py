@@ -161,3 +161,26 @@ DISTORTIONS: dict[str, Callable[[np.ndarray, np.random.Generator], np.ndarray]] 
     "italic":      apply_italic,
     "bold":        apply_bold,
 }
+
+ALL_DISTORTION_KEYS: list[str] = sorted(DISTORTIONS.keys()) + sorted(RENDER_JITTER_KEYS)
+
+
+def sample_distortions(rng: np.random.Generator) -> dict[str, bool]:
+    """Return a dict mapping every distortion key to True/False.
+
+    Line distortions are mutually exclusive: at most one is True.
+    All other distortions are independently sampled at p=0.5.
+    """
+    active: dict[str, bool] = {}
+    for key in DISTORTIONS:
+        if key not in LINE_DISTORTIONS:
+            active[key] = bool(rng.random() < 0.5)
+    line_key = None
+    if rng.random() < 0.5:
+        opts = sorted(LINE_DISTORTIONS)
+        line_key = opts[int(rng.integers(0, len(opts)))]
+    for key in sorted(LINE_DISTORTIONS):
+        active[key] = (key == line_key)
+    active["char_jitter"]    = bool(rng.random() < 0.5)
+    active["spacing_jitter"] = bool(rng.random() < 0.5)
+    return active
