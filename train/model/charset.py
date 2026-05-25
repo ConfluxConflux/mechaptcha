@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DEFAULT_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
+DEFAULT_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 
 def char_to_index(alphabet: str = DEFAULT_ALPHABET) -> dict[str, int]:
