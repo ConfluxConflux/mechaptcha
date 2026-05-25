@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 from generate.distortions import DISTORTIONS, ALL_DISTORTION_KEYS, sample_distortions
 from generate.fonts import download_fonts, load_fonts
