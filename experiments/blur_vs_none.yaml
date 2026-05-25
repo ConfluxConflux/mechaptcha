@@ -1,0 +1,9 @@
+name: blur_vs_none
+description: "Batch A has Gaussian blur applied; Batch B is clean"
+charset: abcdefghijklmnopqrstuvwxyz
+n_chars: 5
+batch_a:
+  transform: distortion
+  distortion: blur
+batch_b:
+  transform: none
