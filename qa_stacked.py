@@ -65,7 +65,7 @@ def make_qa():
     # ── Section 1: random stacked ──────────────────────────────────────────
     for i in range(n_stacked):
         rng = np.random.default_rng(1000 + i)
-        active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
+        active = _sample_active(rng)
         arr, text, font_name = make_sample(1000 + i, fonts, active)
 
         ax = axes[i]
