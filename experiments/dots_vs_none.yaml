@@ -1,0 +1,9 @@
+name: dots_vs_none
+description: "Batch A has scattered dot blobs; Batch B is clean"
+charset: abcdefghijklmnopqrstuvwxyz
+n_chars: 5
+batch_a:
+  transform: distortion
+  distortion: dots
+batch_b:
+  transform: none
