@@ -15,6 +15,12 @@ Usage:
 
     # Different classifier or regularisation
     uv run python -m probe.run --probe-only --classifier linear_svc --C 0.1
+
+    # MLP probe (run after linear to investigate non-linear encoding)
+    uv run python -m probe.run --probe-only --classifier mlp --mlp-hidden-sizes 64 32
+
+    # Add raw-pixel baseline and logit probe alongside the standard layers
+    uv run python -m probe.run --probe-only --layers input conv_block_0 conv_block_1 conv_block_2 pool embedding logits
 """
 from __future__ import annotations
 
