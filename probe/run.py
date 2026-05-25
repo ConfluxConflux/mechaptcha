@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, ProbeConfig
+from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig
 from probe.extract import extract_experiment, load_model
 from probe.fit import probe_experiment
 from probe.plot import plot_heatmap
