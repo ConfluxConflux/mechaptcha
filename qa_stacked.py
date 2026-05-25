@@ -104,7 +104,7 @@ def make_qa():
                                gridspec_kw={"hspace": 0.05})
     for i in range(n_stacked):
         rng = np.random.default_rng(1000 + i)
-        active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
+        active = _sample_active(rng)
         arr, _, _ = make_sample(1000 + i, fonts, active)
         axes2[i].imshow(arr, cmap="gray", vmin=0, vmax=255)
         axes2[i].axis("off")
