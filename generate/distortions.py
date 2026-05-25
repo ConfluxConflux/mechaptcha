@@ -37,17 +37,22 @@ def apply_easy_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def apply_hard_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    # One line at a random angle; 50% chance of sinusoidal waviness
+    # One straight line at a random angle
     pil = Image.fromarray(img)
     draw = ImageDraw.Draw(pil)
     angle_rad = np.deg2rad(rng.uniform(-30, 30))
-    cx, cy = IMG_WIDTH / 2, IMG_HEIGHT / 2
-    if rng.random() < 0.5:
-        amplitude = rng.uniform(2, 5)
-        wavelength = rng.uniform(20, 50)
-        _draw_wavy_line(draw, cx, cy, angle_rad, amplitude, wavelength)
-    else:
-        _draw_straight_line(draw, cx, cy, angle_rad)
+    _draw_straight_line(draw, IMG_WIDTH / 2, IMG_HEIGHT / 2, angle_rad)
+    return np.array(pil)
+
+
+def apply_wavy_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # One sinusoidal line at a random angle
+    pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(pil)
+    angle_rad = np.deg2rad(rng.uniform(-30, 30))
+    amplitude = rng.uniform(2, 5)
+    wavelength = rng.uniform(20, 50)
+    _draw_wavy_line(draw, IMG_WIDTH / 2, IMG_HEIGHT / 2, angle_rad, amplitude, wavelength)
     return np.array(pil)
 
 
