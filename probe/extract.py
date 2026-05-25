@@ -54,12 +54,15 @@ def extract_activations(
 ) -> dict[str, np.ndarray]:
     """Run images through the model and return [N, features] arrays per probed layer.
 
-    Conv layers are reduced according to config.conv_reduction.
-    The pool layer is always flattened (preserves spatial structure at manageable size).
-    The embedding layer is returned as-is.
+    "input"  — raw pixels [B, 1, H, W] flattened; always flat regardless of conv_reduction
+    conv layers — reduced according to config.conv_reduction
+    "pool"   — flattened [B, 5120]; preserves spatial structure
+    "embedding" — [B, 256] as-is
+    "logits" — model output [B, 5, 26] flattened to [B, 130]
     """
     transform = _make_transform(config.image_size)
     conv_layers = {"conv_block_0", "conv_block_1", "conv_block_2"}
+    hook_layers_needed = [l for l in config.layers if l in HOOK_LAYERS]
 
     current: dict[str, np.ndarray] = {}
     accumulated: dict[str, list[np.ndarray]] = {name: [] for name in config.layers}
@@ -73,7 +76,7 @@ def extract_activations(
                 current[name] = t.flatten(start_dim=1).numpy()
         return hook
 
-    handles = _register_hooks(model, config.layers, make_hook)
+    handles = _register_hooks(model, hook_layers_needed, make_hook)
 
     with torch.no_grad():
         for i in range(0, len(image_paths), config.batch_size):
@@ -81,7 +84,15 @@ def extract_activations(
                 transform(Image.open(p).convert("L"))
                 for p in image_paths[i:i + config.batch_size]
             ]).to(device)
-            model(batch)
+
+            if "input" in config.layers:
+                current["input"] = batch.cpu().flatten(start_dim=1).numpy()
+
+            logits = model(batch)
+
+            if "logits" in config.layers:
+                current["logits"] = logits.detach().cpu().flatten(start_dim=1).numpy()
+
             for name in config.layers:
                 accumulated[name].append(current[name])
 
