@@ -9,7 +9,7 @@ import numpy as np
 import yaml
 from PIL import Image
 
-from generate.dataset import generate_dataset
+from training.dataset import generate_dataset
 
 FONT_DIR = Path("data/fonts")
 EXPERIMENTS_DIR = Path("experiments")

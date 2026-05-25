@@ -16,13 +16,13 @@ Output layout:
 import argparse
 from pathlib import Path
 
-from generate.distortions import ALL_DISTORTION_KEYS, DISTORTIONS
-from generate.experiment import (
+from training.distortions import ALL_DISTORTION_KEYS, DISTORTIONS
+from training.experiment import (
     generate_controlled,
     generate_dumb_control,
     generate_variation_control,
 )
-from generate.fonts import download_fonts, load_fonts
+from training.fonts import download_fonts, load_fonts
 
 FONT_DIR = Path("data/fonts")
 

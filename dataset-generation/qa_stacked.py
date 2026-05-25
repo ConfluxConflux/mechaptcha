@@ -6,9 +6,9 @@ import matplotlib.patches as mpatches
 from PIL import Image, ImageDraw
 from pathlib import Path
 
-from generate.fonts import load_fonts
-from generate.renderer import render_captcha, IMG_WIDTH, IMG_HEIGHT, SLOT_WIDTH
-from generate.distortions import DISTORTIONS, ALL_DISTORTION_KEYS, sample_distortions
+from training.fonts import load_fonts
+from training.renderer import render_captcha, IMG_WIDTH, IMG_HEIGHT, SLOT_WIDTH
+from training.distortions import DISTORTIONS, ALL_DISTORTION_KEYS, sample_distortions
 
 FONT_DIR = Path("data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
