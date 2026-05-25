@@ -111,6 +111,7 @@ def main() -> None:
         classifier=args.classifier,
         C=args.C,
         max_iter=args.max_iter,
+        mlp_hidden_sizes=tuple(args.mlp_hidden_sizes),
         conv_reduction=args.conv_reduction,
         image_size=tuple(args.image_size),
         batch_size=args.batch_size,
