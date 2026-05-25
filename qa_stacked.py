@@ -92,7 +92,7 @@ def make_qa():
     for j, (label, active) in enumerate(isolation_items):
         arr, text, font_name = make_sample(isolation_seed, fonts, active)
         ax = axes[n_stacked + 1 + j]
-        ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
         ax.set_title(f'text: "{text}" | distortion: {label}',
                      fontsize=7, pad=2, loc="left")
