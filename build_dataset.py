@@ -40,7 +40,7 @@ def generate(n: int, output_dir: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=cols)
         writer.writeheader()
 
-        for i in range(n):
+        for i in tqdm(range(n), unit="img"):
             rng = np.random.default_rng(i)
 
             text = "".join(rng.choice(list(CHARSET), size=5))
