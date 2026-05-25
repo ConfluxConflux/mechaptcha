@@ -102,7 +102,7 @@ def extract_activations(
     return {name: np.concatenate(chunks) for name, chunks in accumulated.items()}
 
 
-def _register_hooks(model: CaptchaCNN, layers: tuple[str, ...], make_hook):
+def _register_hooks(model: CaptchaCNN, layers: list[str], make_hook) -> list:
     layer_map = {
         "conv_block_0": model.features.conv_block_0,
         "conv_block_1": model.features.conv_block_1,
