@@ -45,7 +45,7 @@ def apply_wave(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def apply_blur(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    sigma = rng.uniform(1.5, 2.5)
+    sigma = rng.uniform(0.6, 1.2)
     blurred = gaussian_filter(img.astype(np.float32), sigma=sigma)
     return np.clip(blurred, 0, 255).astype(np.uint8)
 
