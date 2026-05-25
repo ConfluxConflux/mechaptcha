@@ -76,7 +76,8 @@ def make_stacked_qa():
             label_parts.append("distortions: " + ", ".join(sorted(active)))
         else:
             label_parts.append("distortions: none")
-        ax.set_title(" | ".join(label_parts), fontsize=7, pad=2, loc="left")
+        if not unlabelled:
+            ax.set_title(" | ".join(label_parts), fontsize=7, pad=2, loc="left")
 
     plt.tight_layout()
     out = Path("qa_stacked.png")
