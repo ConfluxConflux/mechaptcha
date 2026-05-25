@@ -176,6 +176,10 @@ def main() -> None:
         plot_heatmap(all_results, plot_path, layers=config.layers)
         print(f"Heatmap saved to {plot_path}")
 
+        lines_path = args.output / "chart_lines.png"
+        plot_lines(all_results, lines_path, layers=config.layers)
+        print(f"Line chart saved to {lines_path}")
+
 
 if __name__ == "__main__":
     main()
