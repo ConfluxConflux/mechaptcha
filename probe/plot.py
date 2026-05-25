@@ -1,4 +1,4 @@
-"""Heatmap visualisation of probe accuracy across experiments and layers."""
+"""Visualisations of probe accuracy: heatmap and layer-by-layer line chart."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,8 +8,22 @@ import numpy as np
 from probe.config import ALL_LAYERS
 from probe.results import AllResults
 
-# Experiments to highlight as controls (plotted at bottom, different style)
+# Experiments to highlight as controls (plotted at bottom / dashed lines)
 _CONTROL_SUFFIXES = ("dumb_control", "variation_control")
+
+# Grouping and colours for the line chart legend
+_CATEGORIES: dict[str, list[str]] = {
+    "Pixel-level noise": ["blur", "dots", "salt_pepper"],
+    "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
+    "Font style":        ["bold", "italic"],
+    "Controls":          ["dumb_control", "variation_control"],
+}
+_PALETTES: dict[str, list[str]] = {
+    "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
+    "Geometric":         ["#d62728", "#ff9896", "#e07070", "#9467bd", "#c5b0d5", "#8c5294"],
+    "Font style":        ["#2ca02c", "#98df8a"],
+    "Controls":          ["#7f7f7f", "#bdbdbd"],
+}
 
 
 def plot_heatmap(
