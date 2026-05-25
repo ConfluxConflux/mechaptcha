@@ -180,6 +180,17 @@ def main() -> None:
         plot_lines(all_results, lines_path, layers=config.layers)
         print(f"Line chart saved to {lines_path}")
 
+        arch_path = args.output / "chart_arch.png"
+        plot_arch(all_results, arch_path, layers=config.layers)
+        print(f"Architecture diagram saved to {arch_path}")
+
+        pca_path = args.output / "chart_pca.png"
+        try:
+            plot_pca(args.activations, all_results, pca_path)
+            print(f"PCA scatter saved to {pca_path}")
+        except ImportError:
+            print("Skipping PCA chart (scikit-learn not available)")
+
 
 if __name__ == "__main__":
     main()
