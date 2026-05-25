@@ -96,7 +96,7 @@ def apply_blur(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 def apply_salt_pepper(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     out = img.copy()
-    density = rng.uniform(0.02, 0.04)
+    density = rng.uniform(0.01, 0.02)
     n_pixels = int(IMG_WIDTH * IMG_HEIGHT * density)
     xs = rng.integers(0, IMG_WIDTH, size=n_pixels)
     ys = rng.integers(0, IMG_HEIGHT, size=n_pixels)
