@@ -139,7 +139,9 @@ def apply_bold(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 DISTORTIONS: dict[str, Callable[[np.ndarray, np.random.Generator], np.ndarray]] = {
-    "line":        apply_line,
+    "easy_line":   apply_easy_line,
+    "hard_line":   apply_hard_line,
+    "two_lines":   apply_two_lines,
     "dots":        apply_dots,
     "wave":        apply_wave,
     "blur":        apply_blur,
