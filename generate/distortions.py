@@ -35,8 +35,8 @@ def apply_dots(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def apply_wave(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    amplitude = rng.uniform(3, 6)
-    wavelength = rng.uniform(30, 60)
+    amplitude = rng.uniform(1.5, 3.5)
+    wavelength = rng.uniform(20, 45)
     out = np.full_like(img, 255)
     for col in range(IMG_WIDTH):
         shift = int(amplitude * np.sin(2 * np.pi * col / wavelength))
