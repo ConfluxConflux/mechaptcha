@@ -38,7 +38,7 @@ if str(REPO_ROOT) not in sys.path:
 from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig, get_model_layers
 from probe.extract import extract_experiment, load_model
 from probe.fit import probe_experiment
-from probe.plot import plot_heatmap, plot_lines
+from probe.plot import plot_arch, plot_heatmap, plot_lines, plot_pca
 from probe.results import format_table, save_results
 
 
