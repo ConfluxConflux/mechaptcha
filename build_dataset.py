@@ -70,10 +70,7 @@ def generate(n: int, output_dir: Path) -> None:
             row.update({k: int(v) for k, v in distortions.items()})
             writer.writerow(row)
 
-            if (i + 1) % 1000 == 0 or i + 1 == n:
-                print(f"  {i + 1:,}/{n:,}", end="\r", flush=True)
-
-    print(f"\nDone. Images: {img_dir}  Labels: {csv_path}")
+    print(f"Done. Images: {img_dir}  Labels: {csv_path}")
 
 
 def main() -> None:
