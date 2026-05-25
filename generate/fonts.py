@@ -3,27 +3,29 @@ import requests
 from fontTools.ttLib import TTFont
 from PIL import ImageFont
 
+BASE = "https://raw.githubusercontent.com/google/fonts/main"
+
 FONT_URLS = {
-    "roboto":            "https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf",
-    "roboto_mono":       "https://raw.githubusercontent.com/google/fonts/main/apache/robotomono/RobotoMono-Regular.ttf",
-    "open_sans":         "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans-Regular.ttf",
-    "lato":              "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Regular.ttf",
-    "merriweather":      "https://raw.githubusercontent.com/google/fonts/main/ofl/merriweather/Merriweather-Regular.ttf",
-    "playfair_display":  "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/PlayfairDisplay-Regular.ttf",
-    "oswald":            "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald-Regular.ttf",
-    "source_code_pro":   "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcecodepro/SourceCodePro-Regular.ttf",
-    "ubuntu":            "https://raw.githubusercontent.com/google/fonts/main/ofl/ubuntu/Ubuntu-Regular.ttf",
-    "pt_serif":          "https://raw.githubusercontent.com/google/fonts/main/ofl/ptserif/PTSerif-Regular.ttf",
-    "nunito":            "https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/Nunito-Regular.ttf",
-    "raleway":           "https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/Raleway-Regular.ttf",
-    "inconsolata":       "https://raw.githubusercontent.com/google/fonts/main/ofl/inconsolata/Inconsolata-Regular.ttf",
-    "libre_baskerville": "https://raw.githubusercontent.com/google/fonts/main/ofl/librebaskerville/LibreBaskerville-Regular.ttf",
-    "cabin":             "https://raw.githubusercontent.com/google/fonts/main/ofl/cabin/Cabin-Regular.ttf",
-    "arvo":              "https://raw.githubusercontent.com/google/fonts/main/ofl/arvo/Arvo-Regular.ttf",
-    "quicksand":         "https://raw.githubusercontent.com/google/fonts/main/ofl/quicksand/Quicksand-Regular.ttf",
-    "courier_prime":     "https://raw.githubusercontent.com/google/fonts/main/ofl/courierprime/CourierPrime-Regular.ttf",
-    "pt_mono":           "https://raw.githubusercontent.com/google/fonts/main/ofl/ptmono/PTMono-Regular.ttf",
-    "noto_sans":         "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf",
+    "roboto":            f"{BASE}/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf",
+    "roboto_mono":       f"{BASE}/ofl/robotomono/RobotoMono%5Bwght%5D.ttf",
+    "open_sans":         f"{BASE}/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf",
+    "lato":              f"{BASE}/ofl/lato/Lato-Regular.ttf",
+    "merriweather":      f"{BASE}/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf",
+    "playfair_display":  f"{BASE}/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
+    "oswald":            f"{BASE}/ofl/oswald/Oswald%5Bwght%5D.ttf",
+    "source_code_pro":   f"{BASE}/ofl/sourcecodepro/SourceCodePro%5Bwght%5D.ttf",
+    "ubuntu":            f"{BASE}/ufl/ubuntu/Ubuntu-Regular.ttf",
+    "pt_serif":          f"{BASE}/ofl/ptserif/PT_Serif-Web-Bold.ttf",
+    "nunito":            f"{BASE}/ofl/nunito/Nunito%5Bwght%5D.ttf",
+    "raleway":           f"{BASE}/ofl/raleway/Raleway%5Bwght%5D.ttf",
+    "inconsolata":       f"{BASE}/ofl/inconsolata/Inconsolata%5Bwdth%2Cwght%5D.ttf",
+    "libre_baskerville": f"{BASE}/ofl/librebaskerville/LibreBaskerville%5Bwght%5D.ttf",
+    "cabin":             f"{BASE}/ofl/cabin/Cabin%5Bwdth%2Cwght%5D.ttf",
+    "arvo":              f"{BASE}/ofl/arvo/Arvo-Regular.ttf",
+    "quicksand":         f"{BASE}/ofl/quicksand/Quicksand%5Bwght%5D.ttf",
+    "courier_prime":     f"{BASE}/ofl/courierprime/CourierPrime-Regular.ttf",
+    "pt_mono":           f"{BASE}/ofl/ptmono/PTM55FT.ttf",
+    "noto_sans":         f"{BASE}/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf",
 }
 
 VALIDATION_CHARSET = "abcdefghijklmnopqrstuvwxyz"
