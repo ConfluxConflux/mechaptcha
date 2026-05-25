@@ -81,11 +81,12 @@ def make_stacked_qa(unlabelled=False):
             ax.set_title(" | ".join(label_parts), fontsize=7, pad=2, loc="left")
 
     plt.tight_layout()
-    out = Path("qa_stacked.png")
+    out = Path("qa_stacked_unlabelled.png" if unlabelled else "qa_stacked.png")
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved: {out}")
 
 
 if __name__ == "__main__":
-    make_stacked_qa()
+    make_stacked_qa(unlabelled=False)
+    make_stacked_qa(unlabelled=True)
