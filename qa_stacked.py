@@ -8,13 +8,22 @@ from pathlib import Path
 
 from generate.fonts import load_fonts
 from generate.renderer import render_captcha, IMG_WIDTH, IMG_HEIGHT, SLOT_WIDTH
-from generate.distortions import DISTORTIONS
+from generate.distortions import DISTORTIONS, LINE_DISTORTIONS
 
 FONT_DIR = Path("data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
 N_CHARS = 5
 RENDER_JITTER_KEYS = {"char_jitter", "spacing_jitter"}
 DISTORTION_KEYS = list(DISTORTIONS.keys()) + sorted(RENDER_JITTER_KEYS)
+
+
+def _sample_active(rng) -> set:
+    """Sample a random active set, enforcing line-distortion mutual exclusivity."""
+    active = {k for k in DISTORTION_KEYS if k not in LINE_DISTORTIONS and rng.random() < 0.5}
+    line_choices = list(LINE_DISTORTIONS)
+    if rng.random() < 0.5:
+        active.add(line_choices[rng.integers(0, len(line_choices))])
+    return active
 
 
 def make_sample(seed, fonts, active_distortions):
