@@ -12,6 +12,7 @@ from typing import Any, Union, cast, get_args, get_origin, get_type_hints
 from train.model import CaptchaModelConfig
 
 DEFAULT_OUTPUT_ROOT = Path("runs/captcha-cnn")
+DEFAULT_CONV_CHANNELS = ",".join(str(channel) for channel in CaptchaModelConfig().conv_channels)
 
 
 def default_output_dir() -> Path:
@@ -40,19 +41,27 @@ class TrainConfig:
     epochs: int = 10
     train_size: int = 100_000
     val_size: int = 10_000
-    batch_size: int = 256
-    num_workers: int = 8
+    batch_size: int = 1024
+    num_workers: int = 16
+    prefetch_factor: int = 4
     learning_rate: float = 3e-4
+    min_learning_rate: float = 1e-5
+    lr_schedule: str = field(default="cosine", metadata={"choices": ("constant", "cosine")})
+    warmup_steps: int = 1_000
     weight_decay: float = 1e-4
     seed: int = 82
     num_chars: int = 5
     alphabet: str = "abcdefghijklmnopqrstuvwxyz"
     image_height: int = 64
     image_width: int = 160
+    conv_channels: str = DEFAULT_CONV_CHANNELS
+    embedding_dim: int = CaptchaModelConfig().embedding_dim
+    dropout: float = 0.0
     log_every: int = 50
     eval_every_steps: int = 500
     amp: bool = True
     compile: bool = False
+    channels_last: bool = True
 
 
 def parse_args() -> argparse.Namespace:
@@ -149,3 +158,10 @@ def model_config_dict(config: CaptchaModelConfig) -> dict[str, object]:
     values["num_classes"] = config.num_classes
     values["flattened_features"] = config.flattened_features
     return values
+
+
+def parse_conv_channels(value: str) -> tuple[int, ...]:
+    channels = tuple(int(chunk.strip()) for chunk in value.split(",") if chunk.strip())
+    if not channels:
+        raise ValueError("conv_channels must contain at least one channel")
+    return channels

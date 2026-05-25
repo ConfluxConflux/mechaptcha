@@ -33,6 +33,7 @@ def upload_training_artifacts_to_hf(
     output_dir: Path,
     train_config: TrainConfig,
     model_config: CaptchaModelConfig,
+    dataset_sha: str | None,
     final_val_metrics: dict[str, float | int],
     validation_history: list[dict[str, float | int]],
     best_val_exact_match: float,
@@ -45,8 +46,10 @@ def upload_training_artifacts_to_hf(
     repo_id = hf_repo_id(wandb_run.name or output_dir.name)
     metadata = build_metadata(
         repo_id=repo_id,
+        output_dir=output_dir,
         train_config=train_config,
         model_config=model_config,
+        dataset_sha=dataset_sha,
         final_val_metrics=final_val_metrics,
         validation_history=validation_history,
         best_val_exact_match=best_val_exact_match,
@@ -90,8 +93,10 @@ def sanitize_repo_component(value: str) -> str:
 
 def build_metadata(
     repo_id: str,
+    output_dir: Path,
     train_config: TrainConfig,
     model_config: CaptchaModelConfig,
+    dataset_sha: str | None,
     final_val_metrics: dict[str, float | int],
     validation_history: list[dict[str, float | int]],
     best_val_exact_match: float,
@@ -101,6 +106,7 @@ def build_metadata(
     return {
         "hf_repo_id": repo_id,
         "dataset_id": train_config.dataset_name,
+        "dataset_sha": dataset_sha,
         "dataset_config": train_config.dataset_config,
         "splits": {
             "train": train_config.train_split,
@@ -114,6 +120,7 @@ def build_metadata(
         "best_val_exact_match": best_val_exact_match,
         "final_validation": final_val_metrics,
         "validation_history": validation_history,
+        "evaluation_summary": evaluation_summary_metadata(output_dir),
         "wandb": {
             "name": wandb_run.name,
             "url": wandb_run.url,
@@ -165,6 +172,13 @@ def write_model_card(path: Path, metadata: dict[str, object]) -> None:
                 "",
                 validation_history_table(metadata["validation_history"]),
                 "",
+                "## Validation Summary Artifacts",
+                "",
+                "- `val_final_distortion_summary.json`: validation metrics split by distortion/style flag.",
+                "- `val_final_confusion_matrix.json`: character-level confusion matrix.",
+                "- `val_final_confusion_matrix.csv`: CSV version of the character-level confusion matrix.",
+                "- `val_failed_ids.json`: validation example IDs that failed exact match.",
+                "",
                 "## Training Summary",
                 "",
                 f"- Global step: `{metadata['global_step']}`",
@@ -200,3 +214,20 @@ def validation_history_table(history: object) -> str:
             continue
         lines.append("| " + " | ".join(f"`{item.get(key, '')}`" for key in metric_keys) + " |")
     return "\n".join(lines)
+
+
+def evaluation_summary_metadata(output_dir: Path) -> dict[str, object]:
+    summary_files = {
+        "distortion_summary": output_dir / "val_final_distortion_summary.json",
+        "confusion_matrix": output_dir / "val_final_confusion_matrix.json",
+        "confusion_matrix_csv": output_dir / "val_final_confusion_matrix.csv",
+        "failed_ids": output_dir / "val_failed_ids.json",
+    }
+    metadata: dict[str, object] = {}
+    for name, path in summary_files.items():
+        if not path.exists():
+            continue
+        metadata[name] = {"path": path.name}
+        if path.suffix == ".json":
+            metadata[name]["content"] = json.loads(path.read_text())
+    return metadata

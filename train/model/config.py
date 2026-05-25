@@ -12,9 +12,9 @@ class CaptchaModelConfig:
     image_channels: int = 1
     num_chars: int = DEFAULT_NUM_CHARS
     alphabet: str = DEFAULT_ALPHABET
-    conv_channels: tuple[int, ...] = (32, 64, 128)
+    conv_channels: tuple[int, ...] = (64, 128, 256, 384)
     pooled_shape: tuple[int, int] = (4, 10)
-    embedding_dim: int = 256
+    embedding_dim: int = 512
     dropout: float = 0.1
 
     @property
