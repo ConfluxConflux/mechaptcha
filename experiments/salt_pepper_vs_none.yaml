@@ -1,0 +1,9 @@
+name: salt_pepper_vs_none
+description: "Batch A has salt-and-pepper noise; Batch B is clean"
+charset: abcdefghijklmnopqrstuvwxyz
+n_chars: 5
+batch_a:
+  transform: distortion
+  distortion: salt_pepper
+batch_b:
+  transform: none
