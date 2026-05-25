@@ -6,21 +6,60 @@ from typing import Callable
 from .renderer import IMG_WIDTH, IMG_HEIGHT
 
 
-def apply_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    n_lines = rng.integers(1, 3)
+def _draw_straight_line(draw, cx, cy, angle_rad):
+    half_diag = np.hypot(IMG_WIDTH, IMG_HEIGHT) / 2
+    x0 = int(cx - half_diag * np.cos(angle_rad))
+    y0 = int(cy - half_diag * np.sin(angle_rad))
+    x1 = int(cx + half_diag * np.cos(angle_rad))
+    y1 = int(cy + half_diag * np.sin(angle_rad))
+    draw.line([(x0, y0), (x1, y1)], fill=0, width=1)
+
+
+def _draw_wavy_line(draw, cx, cy, angle_rad, amplitude, wavelength):
+    half_diag = np.hypot(IMG_WIDTH, IMG_HEIGHT) / 2
+    perp_rad = angle_rad + np.pi / 2
+    ts = np.linspace(-half_diag, half_diag, int(half_diag * 4))
+    pts = []
+    for t in ts:
+        offset = amplitude * np.sin(2 * np.pi * t / wavelength)
+        x = cx + t * np.cos(angle_rad) + offset * np.cos(perp_rad)
+        y = cy + t * np.sin(angle_rad) + offset * np.sin(perp_rad)
+        pts.append((x, y))
+    for i in range(len(pts) - 1):
+        draw.line([pts[i], pts[i + 1]], fill=0, width=1)
+
+
+def apply_easy_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # Always identical pixels: fixed horizontal line at vertical center
+    out = img.copy()
+    out[IMG_HEIGHT // 2, :] = 0
+    return out
+
+
+def apply_hard_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # One line at a random angle; 50% chance of sinusoidal waviness
     pil = Image.fromarray(img)
     draw = ImageDraw.Draw(pil)
-    for _ in range(n_lines):
-        angle = rng.uniform(-30, 30)
-        angle_rad = np.deg2rad(angle)
-        cx = IMG_WIDTH / 2
-        cy = IMG_HEIGHT / 2
-        half_diag = np.hypot(IMG_WIDTH, IMG_HEIGHT) / 2
-        x0 = int(cx - half_diag * np.cos(angle_rad))
-        y0 = int(cy - half_diag * np.sin(angle_rad))
-        x1 = int(cx + half_diag * np.cos(angle_rad))
-        y1 = int(cy + half_diag * np.sin(angle_rad))
-        draw.line([(x0, y0), (x1, y1)], fill=0, width=1)
+    angle_rad = np.deg2rad(rng.uniform(-30, 30))
+    cx, cy = IMG_WIDTH / 2, IMG_HEIGHT / 2
+    if rng.random() < 0.5:
+        amplitude = rng.uniform(2, 5)
+        wavelength = rng.uniform(20, 50)
+        _draw_wavy_line(draw, cx, cy, angle_rad, amplitude, wavelength)
+    else:
+        _draw_straight_line(draw, cx, cy, angle_rad)
+    return np.array(pil)
+
+
+def apply_two_lines(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # Two lines that cross; angles differ by 25–75°
+    pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(pil)
+    cx, cy = IMG_WIDTH / 2, IMG_HEIGHT / 2
+    angle1 = rng.uniform(-40, 40)
+    delta = rng.uniform(25, 75) * (1 if rng.random() < 0.5 else -1)
+    for angle in [angle1, angle1 + delta]:
+        _draw_straight_line(draw, cx, cy, np.deg2rad(angle))
     return np.array(pil)
 
 
