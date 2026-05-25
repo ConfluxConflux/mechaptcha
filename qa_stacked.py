@@ -13,22 +13,8 @@ from generate.distortions import DISTORTIONS
 FONT_DIR = Path("data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
 N_CHARS = 5
-DISTORTION_KEYS = list(DISTORTIONS.keys()) + ["char_jitter"]
-
-
-def render_with_jitter(text, font, rng, jitter_px=4):
-    img = Image.new("L", (IMG_WIDTH, IMG_HEIGHT), color=255)
-    draw = ImageDraw.Draw(img)
-    for i, ch in enumerate(text):
-        slot_x = i * SLOT_WIDTH
-        bbox = draw.textbbox((0, 0), ch, font=font)
-        char_w = bbox[2] - bbox[0]
-        char_h = bbox[3] - bbox[1]
-        x = slot_x + (SLOT_WIDTH - char_w) // 2 - bbox[0]
-        y = (IMG_HEIGHT - char_h) // 2 - bbox[1]
-        y += int(rng.integers(-jitter_px, jitter_px + 1))
-        draw.text((x, y), ch, fill=0, font=font)
-    return img
+RENDER_JITTER_KEYS = {"char_jitter", "spacing_jitter"}
+DISTORTION_KEYS = list(DISTORTIONS.keys()) + sorted(RENDER_JITTER_KEYS)
 
 
 def make_sample(seed, fonts, active_distortions):
@@ -38,10 +24,13 @@ def make_sample(seed, fonts, active_distortions):
     font_name = font_names[rng.integers(0, len(font_names))]
     font = fonts[font_name]
 
-    if "char_jitter" in active_distortions:
-        base = render_with_jitter(text, font, rng)
-    else:
-        base = render_captcha(text, font)
+    x_jitter = 6 if "spacing_jitter" in active_distortions else 0
+    y_jitter = 4 if "char_jitter" in active_distortions else 0
+    needs_jitter = x_jitter > 0 or y_jitter > 0
+    base = render_captcha(text, font,
+                          rng=rng if needs_jitter else None,
+                          x_jitter_px=x_jitter,
+                          y_jitter_px=y_jitter)
 
     arr = np.array(base)
     for key in DISTORTIONS:
