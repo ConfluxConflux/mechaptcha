@@ -70,10 +70,33 @@ def apply_pixelate(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def apply_rotation(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    angle = rng.uniform(-30, 30)
+    angle = rng.uniform(-10, 10)
     pil = Image.fromarray(img)
     rotated = pil.rotate(angle, resample=Image.BILINEAR, expand=False, fillcolor=255)
     return np.array(rotated)
+
+
+def apply_italic(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # Horizontal shear: top of letters lean right
+    angle = rng.uniform(8, 15)
+    s = np.tan(np.deg2rad(angle))
+    h, w = img.shape
+    pil = Image.fromarray(img)
+    # PIL affine: x_src = a*x_dst + b*y_dst + c; center shear around mid-height
+    transform = (1, s, -s * (h - 1) / 2, 0, 1, 0)
+    sheared = pil.transform((w, h), Image.AFFINE, transform,
+                             resample=Image.BILINEAR, fillcolor=255)
+    return np.array(sheared)
+
+
+def apply_bold(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    from scipy.ndimage import binary_dilation
+    radius = rng.integers(1, 3)
+    black_mask = img < 128
+    dilated = binary_dilation(black_mask, iterations=int(radius))
+    out = img.copy()
+    out[dilated] = 0
+    return out
 
 
 DISTORTIONS: dict[str, Callable[[np.ndarray, np.random.Generator], np.ndarray]] = {
@@ -82,6 +105,7 @@ DISTORTIONS: dict[str, Callable[[np.ndarray, np.random.Generator], np.ndarray]] 
     "wave":        apply_wave,
     "blur":        apply_blur,
     "salt_pepper": apply_salt_pepper,
-    "pixelate":    apply_pixelate,
     "rotation":    apply_rotation,
+    "italic":      apply_italic,
+    "bold":        apply_bold,
 }
