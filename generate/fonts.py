@@ -64,7 +64,7 @@ def validate_font(path: Path, charset: str = VALIDATION_CHARSET) -> bool:
         return False
 
 
-def load_fonts(font_dir: Path, font_size: int = 44) -> dict[str, ImageFont.FreeTypeFont]:
+def load_fonts(font_dir: Path, font_size: int = 28) -> dict[str, ImageFont.FreeTypeFont]:
     fonts = {}
     for path in sorted(font_dir.glob("*.ttf")):
         name = path.stem
