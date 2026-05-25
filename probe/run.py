@@ -139,6 +139,10 @@ def main() -> None:
         model = load_model(args.checkpoint, config)
         model.to(device)
 
+        # Narrow config to layers that actually exist in this model
+        config = config.for_model(model)
+        print(f"Probing layers: {config.layers}")
+
         for exp_dir in tqdm(experiments, desc="Extracting"):
             out = args.activations / exp_dir.name
             if not args.force_extract and not _needs_extraction(out, config):
