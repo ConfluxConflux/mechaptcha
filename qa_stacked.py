@@ -46,7 +46,8 @@ def make_stacked_qa(unlabelled=False):
     font_names = sorted(fonts.keys())
 
     fig, axes = plt.subplots(N_SAMPLES, 1, figsize=(10, N_SAMPLES * 1.4))
-    fig.suptitle("Stacked distortions QA — each distortion independently random", fontsize=11)
+    if not unlabelled:
+        fig.suptitle("Stacked distortions QA — each distortion independently random", fontsize=11)
 
     for i in range(N_SAMPLES):
         rng = np.random.default_rng(1000 + i)
