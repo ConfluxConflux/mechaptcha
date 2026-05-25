@@ -3,8 +3,7 @@ from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter
 from typing import Callable
 
-IMG_WIDTH = 250
-IMG_HEIGHT = 70
+from .renderer import IMG_WIDTH, IMG_HEIGHT
 
 
 def apply_line(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
