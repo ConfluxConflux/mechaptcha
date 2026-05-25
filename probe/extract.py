@@ -15,7 +15,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.model import CaptchaCNN, CaptchaModelConfig
-from probe.config import HOOK_LAYERS, ProbeConfig
+from probe.config import HOOK_LAYERS, ProbeConfig, get_model_layers
 
 
 def load_model(checkpoint_path: Path, config: ProbeConfig | None = None) -> CaptchaCNN:
