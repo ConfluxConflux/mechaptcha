@@ -111,14 +111,16 @@ def extract_activations(
 
 
 def _register_hooks(model: CaptchaCNN, layers: list[str], make_hook) -> list:
-    layer_map = {
-        "conv_block_0": model.features.conv_block_0,
-        "conv_block_1": model.features.conv_block_1,
-        "conv_block_2": model.features.conv_block_2,
-        "pool":         model.pool,
-        "embedding":    model.embedding,
+    layer_map: dict[str, torch.nn.Module] = {
+        name: module for name, module in model.features.named_children()
     }
-    return [layer_map[name].register_forward_hook(make_hook(name)) for name in layers]
+    layer_map["pool"] = model.pool
+    layer_map["embedding"] = model.embedding
+    handles = []
+    for name in layers:
+        if name in layer_map:
+            handles.append(layer_map[name].register_forward_hook(make_hook(name)))
+    return handles
 
 
 def extract_experiment(
