@@ -65,9 +65,6 @@ def make_qa():
                              gridspec_kw={"hspace": 0.05})
 
     # ── Section 1: random stacked ──────────────────────────────────────────
-    axes[0].set_title("SECTION 1: random stacked distortions", fontsize=9,
-                       fontweight="bold", loc="left", pad=4)
-
     for i in range(n_stacked):
         rng = np.random.default_rng(1000 + i)
         active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
@@ -76,8 +73,9 @@ def make_qa():
         ax = axes[i]
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.axis("off")
-        label = f'"{text}" ({font_name}) — ' + (", ".join(sorted(active)) if active else "none")
-        ax.set_ylabel(label, fontsize=6, rotation=0, labelpad=4, ha="right", va="center")
+        distortion_str = ", ".join(sorted(active)) if active else "none"
+        ax.set_title(f'text: "{text}" | distortions: {distortion_str}',
+                     fontsize=7, pad=2, loc="left")
 
     # ── Divider ─────────────────────────────────────────────────────────────
     div_ax = axes[n_stacked]
