@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quick QA: 10 CAPTCHAs with randomly stacked distortions, labelled."""
+"""QA sheet: stacked distortions + single-distortion isolation."""
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -7,17 +7,16 @@ from PIL import Image, ImageDraw
 from pathlib import Path
 
 from generate.fonts import load_fonts
-from generate.renderer import IMG_WIDTH, IMG_HEIGHT, SLOT_WIDTH
+from generate.renderer import render_captcha, IMG_WIDTH, IMG_HEIGHT, SLOT_WIDTH
 from generate.distortions import DISTORTIONS
 
 FONT_DIR = Path("data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
 N_CHARS = 5
-N_SAMPLES = 10
 DISTORTION_KEYS = list(DISTORTIONS.keys()) + ["char_jitter"]
 
 
-def render_with_jitter(text, font, rng, jitter_px=5):
+def render_with_jitter(text, font, rng, jitter_px=4):
     img = Image.new("L", (IMG_WIDTH, IMG_HEIGHT), color=255)
     draw = ImageDraw.Draw(img)
     for i, ch in enumerate(text):
@@ -32,61 +31,96 @@ def render_with_jitter(text, font, rng, jitter_px=5):
     return img
 
 
-def apply_all(arr, active_distortions, rng):
-    # apply pixel-level distortions in fixed order
-    for key in list(DISTORTIONS.keys()):
+def make_sample(seed, fonts, active_distortions):
+    font_names = sorted(fonts.keys())
+    rng = np.random.default_rng(seed)
+    text = "".join(rng.choice(list(CHARSET), size=N_CHARS))
+    font_name = font_names[rng.integers(0, len(font_names))]
+    font = fonts[font_name]
+
+    if "char_jitter" in active_distortions:
+        base = render_with_jitter(text, font, rng)
+    else:
+        base = render_captcha(text, font)
+
+    arr = np.array(base)
+    for key in DISTORTIONS:
         if key in active_distortions:
-            arr = DISTORTIONS[key](arr, rng)
-    return arr
+            arr = DISTORTIONS[key](arr, np.random.default_rng(seed))
+
+    return arr, text, font_name
 
 
-def make_stacked_qa(unlabelled=False):
+def make_qa():
     print("Loading fonts...")
     fonts = load_fonts(FONT_DIR)
     font_names = sorted(fonts.keys())
 
-    fig, axes = plt.subplots(N_SAMPLES, 1, figsize=(10, N_SAMPLES * 1.4))
-    if not unlabelled:
-        fig.suptitle("Stacked distortions QA — each distortion independently random", fontsize=11)
+    n_stacked = 10
+    pixel_distortions = list(DISTORTIONS.keys())
+    n_isolated = len(DISTORTION_KEYS) + 1  # +1 for clean baseline
 
-    for i in range(N_SAMPLES):
+    total_rows = n_stacked + 1 + n_isolated  # +1 for section divider row
+    fig, axes = plt.subplots(total_rows, 1, figsize=(6, total_rows * 0.85),
+                             gridspec_kw={"hspace": 0.05})
+
+    # ── Section 1: random stacked ──────────────────────────────────────────
+    axes[0].set_title("SECTION 1: random stacked distortions", fontsize=9,
+                       fontweight="bold", loc="left", pad=4)
+
+    for i in range(n_stacked):
         rng = np.random.default_rng(1000 + i)
-
-        text = "".join(rng.choice(list(CHARSET), size=N_CHARS))
-        font_name = font_names[rng.integers(0, len(font_names))]
-        font = fonts[font_name]
-
         active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
-
-        if "char_jitter" in active:
-            base = render_with_jitter(text, font, rng)
-        else:
-            from generate.renderer import render_captcha
-            base = render_captcha(text, font)
-
-        arr = np.array(base)
-        pixel_distortions = {k for k in active if k in DISTORTIONS}
-        arr = apply_all(arr, pixel_distortions, rng)
+        arr, text, font_name = make_sample(1000 + i, fonts, active)
 
         ax = axes[i]
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.axis("off")
+        label = f'"{text}" ({font_name}) — ' + (", ".join(sorted(active)) if active else "none")
+        ax.set_ylabel(label, fontsize=6, rotation=0, labelpad=4, ha="right", va="center")
 
-        label_parts = [f'"{text}" | {font_name}']
-        if active:
-            label_parts.append("distortions: " + ", ".join(sorted(active)))
-        else:
-            label_parts.append("distortions: none")
-        if not unlabelled:
-            ax.set_title(" | ".join(label_parts), fontsize=7, pad=2, loc="left")
+    # ── Divider ─────────────────────────────────────────────────────────────
+    div_ax = axes[n_stacked]
+    div_ax.axis("off")
+    div_ax.text(0.5, 0.5, "SECTION 2: each distortion in isolation",
+                ha="center", va="center", fontsize=9, fontweight="bold",
+                transform=div_ax.transAxes)
 
-    plt.tight_layout()
-    out = Path("qa_stacked_unlabelled.png" if unlabelled else "qa_stacked.png")
+    # ── Section 2: isolation ─────────────────────────────────────────────────
+    isolation_seed = 2000
+    isolation_items = [("clean (no distortion)", set())] + \
+                      [(k, {k}) for k in DISTORTION_KEYS]
+
+    for j, (label, active) in enumerate(isolation_items):
+        arr, text, font_name = make_sample(isolation_seed, fonts, active)
+        ax = axes[n_stacked + 1 + j]
+        ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        ax.axis("off")
+        ax.set_ylabel(f'"{text}" — {label}', fontsize=6,
+                      rotation=0, labelpad=4, ha="right", va="center")
+
+    plt.subplots_adjust(left=0.35)
+    out = Path("qa_stacked.png")
     plt.savefig(out, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved: {out}")
 
+    # ── Unlabelled version ───────────────────────────────────────────────────
+    fig2, axes2 = plt.subplots(n_stacked, 1, figsize=(4, n_stacked * 0.85),
+                               gridspec_kw={"hspace": 0.05})
+    for i in range(n_stacked):
+        rng = np.random.default_rng(1000 + i)
+        active = {k for k in DISTORTION_KEYS if rng.random() < 0.5}
+        arr, _, _ = make_sample(1000 + i, fonts, active)
+        axes2[i].imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        axes2[i].axis("off")
+
+    plt.subplots_adjust(hspace=0.05)
+    out2 = Path("qa_stacked_unlabelled.png")
+    plt.savefig(out2, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Saved: {out2}")
+
 
 if __name__ == "__main__":
-    make_stacked_qa(unlabelled=False)
-    make_stacked_qa(unlabelled=True)
+    make_qa()
