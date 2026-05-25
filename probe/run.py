@@ -74,8 +74,13 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--classifier", choices=CLASSIFIERS, default="logistic_regression")
     p.add_argument("--C", type=float, default=1.0, help="Regularisation strength")
     p.add_argument("--max-iter", type=int, default=1000, dest="max_iter")
-    p.add_argument("--layers", nargs="+", choices=ALL_LAYERS, default=list(ALL_LAYERS),
-                   help="Which layers to probe")
+    p.add_argument("--mlp-hidden-sizes", type=int, nargs="+", default=[64, 32],
+                   metavar="N", dest="mlp_hidden_sizes",
+                   help="Hidden layer sizes for --classifier mlp (default: 64 32)")
+    p.add_argument("--layers", nargs="+", choices=ALL_LAYERS,
+                   default=list(HOOK_LAYERS),
+                   help="Which layers to probe. Include 'input' for raw-pixel baseline "
+                        "or 'logits' to probe the model output.")
     p.add_argument("--no-plot", action="store_true", dest="no_plot",
                    help="Skip generating the heatmap PNG")
 
