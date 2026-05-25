@@ -1,0 +1,39 @@
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+IMG_WIDTH = 160
+IMG_HEIGHT = 64
+SLOT_WIDTH = IMG_WIDTH // 5  # 32px per character slot
+DEFAULT_FONT_SIZE = 28
+
+
+def render_captcha(
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    rng: np.random.Generator | None = None,
+    x_jitter_px: int = 0,
+    y_jitter_px: int = 0,
+) -> Image.Image:
+    assert len(text) == 5, f"Expected 5 characters, got {len(text)}"
+
+    img = Image.new("L", (IMG_WIDTH, IMG_HEIGHT), color=255)
+    draw = ImageDraw.Draw(img)
+
+    for i, ch in enumerate(text):
+        slot_x = i * SLOT_WIDTH
+        bbox = draw.textbbox((0, 0), ch, font=font)
+        char_w = bbox[2] - bbox[0]
+        char_h = bbox[3] - bbox[1]
+
+        x = slot_x + (SLOT_WIDTH - char_w) // 2 - bbox[0]
+        y = (IMG_HEIGHT - char_h) // 2 - bbox[1]
+
+        if rng is not None:
+            if x_jitter_px > 0:
+                x += int(rng.integers(-x_jitter_px, x_jitter_px + 1))
+            if y_jitter_px > 0:
+                y += int(rng.integers(-y_jitter_px, y_jitter_px + 1))
+
+        draw.text((x, y), ch, fill=0, font=font)
+
+    return img

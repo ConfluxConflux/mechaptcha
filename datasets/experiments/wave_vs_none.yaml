@@ -1,0 +1,9 @@
+name: wave_vs_none
+description: "Batch A has a sine-wave warp applied; Batch B is clean"
+charset: abcdefghijklmnopqrstuvwxyz
+n_chars: 5
+batch_a:
+  transform: distortion
+  distortion: wave
+batch_b:
+  transform: none

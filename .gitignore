@@ -2,3 +2,7 @@
 
 /runs/
 /wandb/
+/data/
+__pycache__/
+.DS_Store
+.claude/

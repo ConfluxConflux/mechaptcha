@@ -1,0 +1,9 @@
+name: line_vs_none
+description: "Batch A has a diagonal line through the text; Batch B is clean"
+charset: abcdefghijklmnopqrstuvwxyz
+n_chars: 5
+batch_a:
+  transform: distortion
+  distortion: line
+batch_b:
+  transform: none
