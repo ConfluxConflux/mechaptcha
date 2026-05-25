@@ -93,3 +93,75 @@ def plot_heatmap(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
+
+
+def plot_lines(
+    results: AllResults,
+    output_path: Path,
+    layers: tuple[str, ...] = ALL_LAYERS,
+    title: str = "Linear probe accuracy by layer",
+) -> None:
+    """Save a line chart of test accuracy vs. layer depth, one line per experiment.
+
+    Experiments are grouped by category in a side legend with bold headers.
+    Control experiments are drawn with dashed lines.
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
+    from matplotlib.font_manager import FontProperties
+
+    layer_list = [l for l in layers if l != "input" and l != "logits"]
+    layer_labels = [l.replace("conv_block_", "cb") for l in layer_list]
+    x = list(range(len(layer_list)))
+
+    bold_fp = FontProperties(weight="bold")
+    normal_fp = FontProperties()
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    legend_handles: list = []
+
+    for cat, exps in _CATEGORIES.items():
+        colors = _PALETTES[cat]
+        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
+        for i, exp in enumerate(exps):
+            if exp not in results:
+                continue
+            vals = [results[exp].get(l, {}).get("test_acc", float("nan")) for l in layer_list]
+            is_control = cat == "Controls"
+            color = colors[i % len(colors)]
+            ax.plot(x, vals, marker="o", markersize=4, linewidth=1.5,
+                    linestyle="--" if is_control else "-", color=color, alpha=0.85)
+            legend_handles.append(mlines.Line2D(
+                [], [], color=color, linestyle="--" if is_control else "-",
+                marker="o", markersize=4, label=exp.replace("_", " "),
+            ))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(layer_labels)
+    ax.set_ylabel("Test accuracy")
+    ax.set_xlabel("Layer")
+    ax.set_title(title)
+    ax.set_ylim(0.45, 1.02)
+    ax.axhline(0.5, color="black", linewidth=0.8, linestyle=":", alpha=0.5)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.grid(axis="y", alpha=0.3)
+
+    leg = ax.legend(
+        handles=legend_handles,
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1),
+        borderaxespad=0,
+        frameon=True,
+        fontsize=8,
+        handlelength=2,
+    )
+    for text, handle in zip(leg.get_texts(), legend_handles):
+        if handle.get_color() == "none":
+            text.set_fontproperties(bold_fp)
+            text.set_color("#333333")
+        else:
+            text.set_fontproperties(normal_fp)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
