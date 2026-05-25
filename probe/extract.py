@@ -18,10 +18,18 @@ from train.model import CaptchaCNN, CaptchaModelConfig
 from probe.config import HOOK_LAYERS, ProbeConfig, get_model_layers
 
 
+_CAPTCHA_MODEL_CONFIG_FIELDS = {
+    "image_channels", "num_chars", "alphabet", "conv_channels",
+    "pooled_shape", "embedding_dim", "dropout",
+}
+
+
 def load_model(checkpoint_path: Path, config: ProbeConfig | None = None) -> CaptchaCNN:
     """Load a CaptchaCNN from a training checkpoint."""
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    model_cfg = ckpt.get("model_config", {})
+    raw_cfg = ckpt.get("model_config", {})
+    # Strip computed properties (num_classes, flattened_features) that aren't dataclass fields
+    model_cfg = {k: v for k, v in raw_cfg.items() if k in _CAPTCHA_MODEL_CONFIG_FIELDS}
     model_config = CaptchaModelConfig(**model_cfg) if model_cfg else CaptchaModelConfig()
     model = CaptchaCNN(model_config)
     model.load_state_dict(ckpt["model"])
