@@ -63,10 +63,26 @@ def apply_salt_pepper(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     return out
 
 
+def apply_pixelate(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    factor = rng.integers(4, 9)
+    pil = Image.fromarray(img)
+    small = pil.resize((IMG_WIDTH // factor, IMG_HEIGHT // factor), Image.NEAREST)
+    return np.array(small.resize((IMG_WIDTH, IMG_HEIGHT), Image.NEAREST))
+
+
+def apply_rotation(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    angle = rng.uniform(-30, 30)
+    pil = Image.fromarray(img)
+    rotated = pil.rotate(angle, resample=Image.BILINEAR, expand=False, fillcolor=255)
+    return np.array(rotated)
+
+
 DISTORTIONS: dict[str, Callable[[np.ndarray, np.random.Generator], np.ndarray]] = {
     "line":        apply_line,
     "dots":        apply_dots,
     "wave":        apply_wave,
     "blur":        apply_blur,
     "salt_pepper": apply_salt_pepper,
+    "pixelate":    apply_pixelate,
+    "rotation":    apply_rotation,
 }
