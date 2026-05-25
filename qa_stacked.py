@@ -61,8 +61,8 @@ def make_qa():
     n_isolated = len(DISTORTION_KEYS) + 1  # +1 for clean baseline
 
     total_rows = n_stacked + 1 + n_isolated  # +1 for section divider row
-    fig, axes = plt.subplots(total_rows, 1, figsize=(6, total_rows * 0.85),
-                             gridspec_kw={"hspace": 0.05})
+    fig, axes = plt.subplots(total_rows, 1, figsize=(8, total_rows * 0.9),
+                             gridspec_kw={"hspace": 0.6})
 
     # ── Section 1: random stacked ──────────────────────────────────────────
     for i in range(n_stacked):
