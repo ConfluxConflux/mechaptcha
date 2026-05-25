@@ -135,9 +135,10 @@ def apply_italic(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 def apply_bold(img: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     from scipy.ndimage import binary_dilation
-    radius = 1
+    # Cross structure: expand only in 4 cardinal directions, not diagonals
+    cross = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
     black_mask = img < 128
-    dilated = binary_dilation(black_mask, iterations=int(radius))
+    dilated = binary_dilation(black_mask, structure=cross)
     out = img.copy()
     out[dilated] = 0
     return out
