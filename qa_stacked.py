@@ -71,7 +71,7 @@ def make_qa():
         arr, text, font_name = make_sample(1000 + i, fonts, active)
 
         ax = axes[i]
-        ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
         distortion_str = ", ".join(sorted(active)) if active else "none"
         ax.set_title(f'text: "{text}" | distortions: {distortion_str}',
