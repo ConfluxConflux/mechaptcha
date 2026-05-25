@@ -37,6 +37,7 @@ def upload_training_artifacts_to_hf(
     final_val_metrics: dict[str, float | int],
     validation_history: list[dict[str, float | int]],
     best_val_exact_match: float,
+    best_val_global_step: int | None,
     global_step: int,
     wandb_run: WandbRunInfo,
 ) -> HuggingFaceUploadInfo:
@@ -53,6 +54,7 @@ def upload_training_artifacts_to_hf(
         final_val_metrics=final_val_metrics,
         validation_history=validation_history,
         best_val_exact_match=best_val_exact_match,
+        best_val_global_step=best_val_global_step,
         global_step=global_step,
         wandb_run=wandb_run,
     )
@@ -100,9 +102,11 @@ def build_metadata(
     final_val_metrics: dict[str, float | int],
     validation_history: list[dict[str, float | int]],
     best_val_exact_match: float,
+    best_val_global_step: int | None,
     global_step: int,
     wandb_run: WandbRunInfo,
 ) -> dict[str, object]:
+    best_is_last = best_val_global_step == global_step
     return {
         "hf_repo_id": repo_id,
         "dataset_id": train_config.dataset_name,
@@ -118,6 +122,20 @@ def build_metadata(
         },
         "global_step": global_step,
         "best_val_exact_match": best_val_exact_match,
+        "best_val_global_step": best_val_global_step,
+        "checkpoints": {
+            "last": {
+                "path": "checkpoints/last.pt",
+                "global_step": global_step,
+            },
+            "best": None
+            if best_is_last
+            else {
+                "path": "checkpoints/best.pt",
+                "global_step": best_val_global_step,
+            },
+            "best_is_last": best_is_last,
+        },
         "final_validation": final_val_metrics,
         "validation_history": validation_history,
         "evaluation_summary": evaluation_summary_metadata(output_dir),
@@ -139,6 +157,9 @@ def write_model_card(path: Path, metadata: dict[str, object]) -> None:
     final_val_metrics = metadata["final_validation"]
     if not isinstance(final_val_metrics, dict):
         raise TypeError("final_validation metadata must be a dictionary")
+    checkpoints = metadata["checkpoints"]
+    if not isinstance(checkpoints, dict):
+        raise TypeError("checkpoints metadata must be a dictionary")
 
     path.write_text(
         "\n".join(
@@ -164,33 +185,57 @@ def write_model_card(path: Path, metadata: dict[str, object]) -> None:
                 f"- Dataset: `{dataset_id}`",
                 f"- Weights & Biases run: {metadata['wandb']['url'] or 'not available'}",
                 "",
-                "## Validation Metrics",
+                "## Best Validation",
                 "",
-                metrics_table(final_val_metrics),
-                "",
-                "## Validation History",
-                "",
-                validation_history_table(metadata["validation_history"]),
+                f"- Best exact match: `{metadata['best_val_exact_match']}`",
+                f"- Best validation step: `{metadata['best_val_global_step']}`",
+                f"- Best checkpoint: `{best_checkpoint_description(checkpoints)}`",
+                f"- Final exact match: `{final_val_metrics.get('val/final/exact_match', 'not available')}`",
+                f"- Final character accuracy: `{final_val_metrics.get('val/final/char_accuracy', 'not available')}`",
+                f"- Final loss: `{final_val_metrics.get('val/final/loss', 'not available')}`",
+                f"- Global step: `{metadata['global_step']}`",
                 "",
                 "## Validation Summary Artifacts",
                 "",
-                "- `val_final_distortion_summary.json`: validation metrics split by distortion/style flag.",
-                "- `val_final_confusion_matrix.json`: character-level confusion matrix.",
-                "- `val_final_confusion_matrix.csv`: CSV version of the character-level confusion matrix.",
-                "- `val_failed_ids.json`: validation example IDs that failed exact match.",
+                "- `val/val_final_distortion_summary.json`: validation metrics split by distortion/style flag.",
+                "- `val/val_final_distortion_count_summary.json`: validation metrics split by number of active distortions.",
+                "- `val/val_final_confusion_matrix.json`: character-level confusion matrix.",
+                "- `val/val_final_confusion_matrix.csv`: CSV version of the character-level confusion matrix.",
+                "- `val/val_failed_ids.json`: validation example IDs that failed exact match.",
+                "- `val/figures/`: validation graphs.",
                 "",
                 "## Training Summary",
                 "",
                 f"- Global step: `{metadata['global_step']}`",
-                f"- Best validation exact match: `{metadata['best_val_exact_match']}`",
+                f"- Train split: `{metadata['splits']['train']}`",
+                f"- Validation split: `{metadata['splits']['val']}`",
+                f"- Train sample limit: `{metadata['sample_counts']['train']}`",
+                f"- Validation sample limit: `{metadata['sample_counts']['val']}`",
                 "",
                 "## Configuration",
                 "",
                 "The full training and model configuration is included in `training_metadata.json`.",
                 "",
+                "## Final Validation Metrics",
+                "",
+                metrics_table(final_val_metrics),
+                "",
             ]
         )
     )
+
+
+def best_checkpoint_description(checkpoints: dict[str, object]) -> str:
+    if checkpoints.get("best_is_last"):
+        return "same as checkpoints/last.pt; separate best checkpoint omitted"
+
+    best = checkpoints.get("best")
+    if not isinstance(best, dict):
+        return "not available"
+
+    path = best.get("path", "not available")
+    step = best.get("global_step", "not available")
+    return f"{path} from step {step}"
 
 
 def metrics_table(metrics: dict[str, object]) -> str:
@@ -200,34 +245,22 @@ def metrics_table(metrics: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
-def validation_history_table(history: object) -> str:
-    if not isinstance(history, list) or not history:
-        return "No validation history was recorded."
-
-    metric_keys = sorted({key for item in history if isinstance(item, dict) for key in item})
-    lines = [
-        "| " + " | ".join(f"`{key}`" for key in metric_keys) + " |",
-        "| " + " | ".join("---:" for _ in metric_keys) + " |",
-    ]
-    for item in history:
-        if not isinstance(item, dict):
-            continue
-        lines.append("| " + " | ".join(f"`{item.get(key, '')}`" for key in metric_keys) + " |")
-    return "\n".join(lines)
-
-
 def evaluation_summary_metadata(output_dir: Path) -> dict[str, object]:
+    val_dir = output_dir / "val"
     summary_files = {
-        "distortion_summary": output_dir / "val_final_distortion_summary.json",
-        "confusion_matrix": output_dir / "val_final_confusion_matrix.json",
-        "confusion_matrix_csv": output_dir / "val_final_confusion_matrix.csv",
-        "failed_ids": output_dir / "val_failed_ids.json",
+        "distortion_summary": val_dir / "val_final_distortion_summary.json",
+        "distortion_count_summary": val_dir / "val_final_distortion_count_summary.json",
+        "distortion_count_accuracy_figure": val_dir / "figures" / "val_final_distortion_count_accuracy.png",
+        "distortion_count_accuracy_figure_svg": val_dir / "figures" / "val_final_distortion_count_accuracy.svg",
+        "confusion_matrix": val_dir / "val_final_confusion_matrix.json",
+        "confusion_matrix_csv": val_dir / "val_final_confusion_matrix.csv",
+        "failed_ids": val_dir / "val_failed_ids.json",
     }
     metadata: dict[str, object] = {}
     for name, path in summary_files.items():
         if not path.exists():
             continue
-        metadata[name] = {"path": path.name}
+        metadata[name] = {"path": str(path.relative_to(output_dir))}
         if path.suffix == ".json":
             metadata[name]["content"] = json.loads(path.read_text())
     return metadata
