@@ -19,6 +19,16 @@ def _make_classifier(config: ProbeConfig):
         return LogisticRegression(C=config.C, max_iter=config.max_iter, solver="lbfgs")
     elif config.classifier == "linear_svc":
         return LinearSVC(C=config.C, max_iter=config.max_iter)
+    elif config.classifier == "mlp":
+        # alpha is the L2 penalty; inverse of C to keep the interface consistent
+        return MLPClassifier(
+            hidden_layer_sizes=config.mlp_hidden_sizes,
+            max_iter=config.max_iter,
+            alpha=1.0 / config.C,
+            early_stopping=True,
+            validation_fraction=0.1,
+            random_state=0,
+        )
     raise ValueError(f"Unknown classifier: {config.classifier!r}")
 
 
