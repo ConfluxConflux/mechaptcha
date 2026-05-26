@@ -20,6 +20,14 @@ _DISPLAY_NAMES: dict[str, str] = {
 def _display(name: str) -> str:
     return _DISPLAY_NAMES.get(name, name).replace("_", " ")
 
+
+def _get_acc(results: AllResults, exp: str, layer: str) -> float:
+    try:
+        v = results[exp][layer]
+        return v.test_acc if hasattr(v, "test_acc") else v["test_acc"]
+    except (KeyError, TypeError):
+        return float("nan")
+
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
     "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
