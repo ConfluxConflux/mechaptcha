@@ -214,25 +214,33 @@ def plot_arch(
 ) -> None:
     """Architecture diagram (top) + per-experiment heatmap (bottom).
 
-    Top panel: CNN pipeline with colour-coded boxes (avg probe accuracy) and
-    probe tap-point circles at each layer.
-    Bottom panel: compact heatmap aligned under the same columns.
+    Top panel: CNN pipeline with probe tap-points at every probed layer,
+    including input (raw pixels) and logits if present in results.
+    Bottom panel: heatmap aligned under the same columns.
     """
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
     from matplotlib.colors import LinearSegmentedColormap
 
-    plot_layers = [l for l in layers if l in _ARCH_LAYER_LABELS]
-    if not plot_layers:
+    # Middle CNN layers (have architecture boxes)
+    cnn_layers = [l for l in layers if l in _ARCH_LAYER_LABELS]
+    if not cnn_layers:
         return
+
+    # Bookend layers probed outside the CNN body
+    has_input  = "input"  in layers and any(not np.isnan(_get_acc(results, e, "input"))  for e in results)
+    has_logits = "logits" in layers and any(not np.isnan(_get_acc(results, e, "logits")) for e in results)
+
+    # All layers for heatmap columns (left to right)
+    all_probe_layers = (["input"] if has_input else []) + cnn_layers + (["logits"] if has_logits else [])
 
     distortions = [e for e in results if "control" not in e]
     avg_acc = {
-        l: np.mean([_get_acc(results, e, l) for e in distortions if l in results[e]])
-        for l in plot_layers
+        l: np.mean([v for e in distortions if not np.isnan(v := _get_acc(results, e, l))])
+        for l in all_probe_layers
     }
 
-    fig = plt.figure(figsize=(17, 10))
+    fig = plt.figure(figsize=(19, 10))
     fig.patch.set_facecolor("#fafafa")
 
     ax = fig.add_axes([0.01, 0.54, 0.96, 0.42])
@@ -243,6 +251,8 @@ def plot_arch(
                  fontsize=13, pad=6, fontweight="bold")
 
     img_x, cy = 0.12, 1.825
+
+    # ── Input box ─────────────────────────────────────────────────────────────
     ax.add_patch(FancyBboxPatch((img_x, cy - 0.275), 1.0, 0.55,
         boxstyle="round,pad=0.05", facecolor="white", edgecolor="#aaa", linewidth=1.5))
     for ci, ch in enumerate("ABCDE"):
@@ -252,6 +262,7 @@ def plot_arch(
     ax.text(img_x + 0.5, cy - 0.42, "Input\n1 × 64 × 160",
             ha="center", va="center", fontsize=7, color="#555")
 
+    # ── Output heads box ──────────────────────────────────────────────────────
     out_x = 8.88
     ax.add_patch(FancyBboxPatch((out_x, cy - 0.275), 1.0, 0.55,
         boxstyle="round,pad=0.05", facecolor="#f0fff0", edgecolor="#6a9", linewidth=1.5))
@@ -262,12 +273,13 @@ def plot_arch(
     ax.text(out_x + 0.5, cy - 0.42, "5 heads\n5 × 26 logits",
             ha="center", va="center", fontsize=7, color="#555")
 
-    n = len(plot_layers)
+    # ── CNN layer boxes ────────────────────────────────────────────────────────
+    n = len(cnn_layers)
     box_w = 0.85
     box_pitch = (out_x - 0.1 - 1.30) / n
     xs = [1.30 + i * box_pitch + (box_pitch - box_w) / 2 for i in range(n)]
 
-    for i, layer in enumerate(plot_layers):
+    for i, layer in enumerate(cnn_layers):
         x = xs[i]
         h = _ARCH_LAYER_HEIGHTS.get(layer, 0.65)
         col = _acc_color(avg_acc[layer])
@@ -278,6 +290,7 @@ def plot_arch(
         ax.text(x + box_w / 2, cy, _ARCH_LAYER_LABELS[layer],
                 ha="center", va="center", fontsize=6.5, color=tc, zorder=4, linespacing=1.3)
 
+    # ── Arrows ────────────────────────────────────────────────────────────────
     def _arrow(x0: float, x1: float) -> None:
         ax.annotate("", xy=(x1, cy), xytext=(x0, cy),
                     arrowprops=dict(arrowstyle="->", color="#666", lw=1.3), zorder=2)
@@ -287,56 +300,85 @@ def plot_arch(
         _arrow(xs[i] + box_w, xs[i + 1])
     _arrow(xs[-1] + box_w, out_x)
 
-    probe_y_line = cy - max(_ARCH_LAYER_HEIGHTS.get(l, 0.65) for l in plot_layers) / 2 - 0.08
+    # ── Probe tap-points ──────────────────────────────────────────────────────
+    probe_y_line = cy - max(_ARCH_LAYER_HEIGHTS.get(l, 0.65) for l in cnn_layers) / 2 - 0.08
     probe_y_dot  = probe_y_line - 0.55
-    for i, layer in enumerate(plot_layers):
-        tx = xs[i] + box_w / 2
+
+    def _probe_dot(tx: float, layer: str, label: str, color: str = "#cc3300") -> None:
         ax.plot([tx, tx], [probe_y_line, probe_y_dot + 0.11],
-                color="#cc3300", lw=1.3, linestyle="--", zorder=1)
-        ax.add_patch(plt.Circle((tx, probe_y_dot), 0.115, color="#cc3300", zorder=5))
+                color=color, lw=1.3, linestyle="--", zorder=1)
+        ax.add_patch(plt.Circle((tx, probe_y_dot), 0.115, color=color, zorder=5))
         ax.text(tx, probe_y_dot, f"{avg_acc[layer]:.0%}",
                 ha="center", va="center", fontsize=6.5, color="white",
                 fontweight="bold", zorder=6)
-        short = layer.replace("conv_block_", "cb")
-        ax.text(tx, probe_y_dot - 0.21, f"probe ({short})",
-                ha="center", va="top", fontsize=5.8, color="#cc3300")
+        ax.text(tx, probe_y_dot - 0.21, label,
+                ha="center", va="top", fontsize=5.8, color=color)
 
-    ax.text(8.2, 0.35,
-            "Box color = avg probe accuracy (distortions only)\n"
-            "Red = logistic regression: can it tell batch A from batch B?",
+    # Bookend probes (different colour so they stand out)
+    INPUT_COL  = "#805500"   # warm brown — "before the network"
+    LOGITS_COL = "#1a6b1a"   # dark green — "after the network"
+
+    if has_input:
+        _probe_dot(img_x + 0.5, "input", "probe\n(pixels)", color=INPUT_COL)
+
+    for i, layer in enumerate(cnn_layers):
+        _probe_dot(xs[i] + box_w / 2, layer,
+                   f"probe ({layer.replace('conv_block_', 'cb')})")
+
+    if has_logits:
+        _probe_dot(out_x + 0.5, "logits", "probe\n(logits)", color=LOGITS_COL)
+
+    # ── Legend note ───────────────────────────────────────────────────────────
+    ax.text(4.8, 0.32,
+            "Box color = avg probe accuracy (distortions only)  ·  "
+            "Circles = logistic regression: can it separate batch A from batch B?\n"
+            "Brown = raw pixel probe  ·  Red = intermediate layer probes  ·  Green = logit probe",
             ha="center", va="center", fontsize=7.5, color="#333",
             bbox=dict(boxstyle="round,pad=0.35", facecolor="#fff8e1", edgecolor="#ddd", alpha=0.95))
 
     sm = plt.cm.ScalarMappable(cmap=plt.cm.Blues, norm=plt.Normalize(0.5, 1.0))
     sm.set_array([])
-    cbar_ax = fig.add_axes([0.955, 0.56, 0.012, 0.37])
+    cbar_ax = fig.add_axes([0.955, 0.56, 0.010, 0.37])
     cb = fig.colorbar(sm, cax=cbar_ax)
     cb.set_label("avg probe acc", fontsize=7)
     cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     cb.ax.tick_params(labelsize=6)
 
+    # ── Heatmap (all probed layers) ────────────────────────────────────────────
     order = [e for e in _ARCH_ORDER if e in results]
-    matrix = np.array([[_get_acc(results, exp, l) for l in plot_layers] for exp in order])
+    matrix = np.array([[_get_acc(results, exp, l) for l in all_probe_layers] for exp in order])
     cmap2 = LinearSegmentedColormap.from_list("wb", ["white", "#1565C0"])
     ax_h = fig.add_axes([0.06, 0.03, 0.87, 0.44])
     im = ax_h.imshow(matrix, cmap=cmap2, norm=plt.Normalize(0.5, 1.0), aspect="auto")
     for i in range(len(order)):
-        for j in range(len(plot_layers)):
+        for j in range(len(all_probe_layers)):
             v = matrix[i, j]
-            ax_h.text(j, i, f"{v:.0%}", ha="center", va="center",
-                      fontsize=8, color="white" if v > 0.87 else "black")
+            if not np.isnan(v):
+                ax_h.text(j, i, f"{v:.0%}", ha="center", va="center",
+                          fontsize=8, color="white" if v > 0.87 else "black")
 
-    short_labels = [l.replace("conv_block_", "cb") for l in plot_layers]
-    ax_h.set_xticks(range(len(plot_layers)))
-    ax_h.set_xticklabels(short_labels, fontsize=9)
+    def _col_label(l: str) -> str:
+        if l == "input":   return "input\n(pixels)"
+        if l == "logits":  return "logits\n(output)"
+        return l.replace("conv_block_", "cb")
+
+    col_labels = [_col_label(l) for l in all_probe_layers]
+    ax_h.set_xticks(range(len(all_probe_layers)))
+    ax_h.set_xticklabels(col_labels, fontsize=8.5)
     ax_h.set_yticks(range(len(order)))
     ax_h.set_yticklabels([_display(e) for e in order], fontsize=9)
-    ax_h.set_xlabel("Layer  (left → right = deeper)", fontsize=9)
+    ax_h.set_xlabel("Layer  (left → right = deeper into network)", fontsize=9)
     ax_h.set_title(
         "Each cell = one trained logistic regression  |  color = test accuracy  (50% = chance)",
         fontsize=9, pad=5)
 
-    cbar2_ax = fig.add_axes([0.945, 0.03, 0.012, 0.44])
+    # Shade the bookend columns
+    if has_input:
+        ax_h.axvspan(-0.5, 0.5, alpha=0.06, color="orange")
+    if has_logits:
+        ax_h.axvspan(len(all_probe_layers) - 1.5, len(all_probe_layers) - 0.5, alpha=0.06, color="green")
+
+    cbar2_ax = fig.add_axes([0.945, 0.03, 0.010, 0.44])
     cb2 = fig.colorbar(im, cax=cbar2_ax)
     cb2.set_label("test acc", fontsize=7)
     cb2.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
