@@ -33,6 +33,17 @@ _ORDER = ["salt_pepper", "blur", "dots", "bold", "italic",
           "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
           "dumb_control", "variation_control"]
 
+_DISPLAY_NAMES: dict[str, str] = {
+    "wave":      "letter wave",
+    "easy_line": "horizontal line",
+    "hard_line": "angled line",
+}
+
+
+def _display(name: str) -> str:
+    return _DISPLAY_NAMES.get(name, name).replace("_", " ")
+
+
 _CATEGORIES = {
     "Pixel-level noise": (["blur", "dots", "salt_pepper"],          ["#1f77b4", "#aec7e8", "#4a90d9"]),
     "Geometric":         (["rotation", "wave", "wavy_line",
