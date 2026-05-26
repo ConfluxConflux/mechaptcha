@@ -1,4 +1,17 @@
 Device: cpu
 Loading model from runs/siddharth/best.pt
 Probing layers: ('input', 'conv_block_0', 'conv_block_1', 'conv_block_2', 'conv_block_3', 'pool', 'embedding', 'logits')
-Extracting:   0%|          | 0/13 [00:00<?, ?it/s]
+Extracting:   0%|          | 0/13 [00:00<?, ?it/s]                                                  Extracting:   0%|          | 0/13 [01:49<?, ?it/s]Extracting:   8%|▊         | 1/13 [01:49<21:48, 109.00s/it]                                                           Extracting:   8%|▊         | 1/13 [03:36<21:48, 109.00s/it]Extracting:  15%|█▌        | 2/13 [03:36<19:50, 108.21s/it]                                                           Extracting:  15%|█▌        | 2/13 [05:35<19:50, 108.21s/it]Extracting:  23%|██▎       | 3/13 [05:35<18:52, 113.27s/it]                                                           Extracting:  23%|██▎       | 3/13 [07:57<18:52, 113.27s/it]Extracting:  31%|███       | 4/13 [07:57<18:39, 124.41s/it]                                                           Extracting:  31%|███       | 4/13 [10:16<18:39, 124.41s/it]Extracting:  38%|███▊      | 5/13 [10:16<17:18, 129.78s/it]                                                           Extracting:  38%|███▊      | 5/13 [12:15<17:18, 129.78s/it]Extracting:  46%|████▌     | 6/13 [12:15<14:42, 126.07s/it]                                                           Extracting:  46%|████▌     | 6/13 [13:44<14:42, 126.07s/it]Extracting:  54%|█████▍    | 7/13 [13:44<11:22, 113.77s/it]                                                           Extracting:  54%|█████▍    | 7/13 [15:16<11:22, 113.77s/it]Extracting:  62%|██████▏   | 8/13 [15:16<08:55, 107.08s/it]                                                           Extracting:  62%|██████▏   | 8/13 [17:13<08:55, 107.08s/it]Extracting:  69%|██████▉   | 9/13 [17:13<07:20, 110.15s/it]                                                           Extracting:  69%|██████▉   | 9/13 [18:52<07:20, 110.15s/it]Extracting:  77%|███████▋  | 10/13 [18:52<05:19, 106.55s/it]                                                            Extracting:  77%|███████▋  | 10/13 [20:29<05:19, 106.55s/it]Extracting:  85%|████████▍ | 11/13 [20:29<03:27, 103.72s/it]                                                            Extracting:  85%|████████▍ | 11/13 [22:06<03:27, 103.72s/it]Extracting:  92%|█████████▏| 12/13 [22:06<01:41, 101.75s/it]                                                            Extracting:  92%|█████████▏| 12/13 [23:42<01:41, 101.75s/it]Extracting: 100%|██████████| 13/13 [23:42<00:00, 99.88s/it] Extracting: 100%|██████████| 13/13 [23:42<00:00, 109.41s/it]
+  blur -> probe_results/activations/blur
+  bold -> probe_results/activations/bold
+  dots -> probe_results/activations/dots
+  dumb_control -> probe_results/activations/dumb_control
+  easy_line -> probe_results/activations/easy_line
+  hard_line -> probe_results/activations/hard_line
+  italic -> probe_results/activations/italic
+  rotation -> probe_results/activations/rotation
+  salt_pepper -> probe_results/activations/salt_pepper
+  two_lines -> probe_results/activations/two_lines
+  variation_control -> probe_results/activations/variation_control
+  wave -> probe_results/activations/wave
+  wavy_line -> probe_results/activations/wavy_line
