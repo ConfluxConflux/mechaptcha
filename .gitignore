@@ -4,7 +4,7 @@
 /wandb/
 /data/
 /probe_results/activations/
-probe_run.log
+*.log
 __pycache__/
 .DS_Store
 .claude/
