@@ -1,0 +1,16 @@
+program: train/scripts/train.py
+method: grid
+metric:
+  name: val/exact_match
+  goal: maximize
+command:
+  - ${env}
+  - uv
+  - run
+  - python
+  - ${program}
+  - --no-upload-to-hf
+  - ${args}
+parameters:
+  embedding_dim:
+    values: [64, 128, 256, 384, 512, 1024, 2048]

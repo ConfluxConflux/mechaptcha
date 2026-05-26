@@ -22,9 +22,11 @@ if str(REPO_ROOT) not in sys.path:
 from train.model import CaptchaCNN, CaptchaModelConfig
 from train.scripts.config import (
     TrainConfig,
+    combined_config_dict,
+    model_config_from_args,
+    model_config_from_dict,
     model_config_dict,
     parse_args,
-    parse_conv_channels,
     train_config_from_args,
     train_config_dict,
     train_config_from_dict,
@@ -81,13 +83,19 @@ def make_loader(
     return loader, sampler
 
 
-def broadcast_config(config: TrainConfig, distributed: bool, rank: int) -> TrainConfig:
+def broadcast_configs(
+    config: TrainConfig,
+    model_config: CaptchaModelConfig,
+    distributed: bool,
+    rank: int,
+) -> tuple[TrainConfig, CaptchaModelConfig]:
     if not distributed:
-        return config
+        return config, model_config
 
-    payload = [train_config_dict(config) if rank == 0 else None]
+    payload = [combined_config_dict(config, model_config) if rank == 0 else None]
     dist.broadcast_object_list(payload, src=0)
-    return train_config_from_dict(config, cast(dict[str, object], payload[0]))
+    resolved_values = cast(dict[str, object], payload[0])
+    return train_config_from_dict(config, resolved_values), model_config_from_dict(model_config, resolved_values)
 
 
 def save_checkpoint(
@@ -116,10 +124,11 @@ def save_checkpoint(
     )
 
 
-def init_wandb(args: argparse.Namespace, enabled: bool) -> tuple[WandbRun | None, TrainConfig]:
+def init_wandb(args: argparse.Namespace, enabled: bool) -> tuple[WandbRun | None, TrainConfig, CaptchaModelConfig]:
     base_config = train_config_from_args(args)
+    base_model_config = model_config_from_args(args)
     if not enabled or base_config.wandb_mode == "disabled":
-        return None, base_config
+        return None, base_config, base_model_config
 
     import wandb
 
@@ -130,13 +139,15 @@ def init_wandb(args: argparse.Namespace, enabled: bool) -> tuple[WandbRun | None
             entity=args.wandb_entity,
             name=args.wandb_run_name,
             mode=args.wandb_mode,
-            config=cast(Any, args),
+            config=combined_config_dict(base_config, base_model_config),
         ),
     )
     resolved_config = train_config_from_dict(base_config, dict(run.config))
+    resolved_model_config = model_config_from_dict(base_model_config, dict(run.config))
     resolved_config = train_config_from_dict(resolved_config, wandb_env_config())
-    run.config.update(train_config_dict(resolved_config), allow_val_change=True)
-    return run, resolved_config
+    resolved_model_config = model_config_from_dict(resolved_model_config, wandb_env_config())
+    run.config.update(combined_config_dict(resolved_config, resolved_model_config), allow_val_change=True)
+    return run, resolved_config, resolved_model_config
 
 
 def update_wandb_model_config(run: WandbRun | None, model_config: CaptchaModelConfig) -> None:
@@ -206,8 +217,8 @@ def main() -> None:
     args = parse_args()
     distributed, rank, local_rank, world_size = setup_distributed()
     is_main = rank == 0
-    run, config = init_wandb(args, enabled=is_main)
-    config = broadcast_config(config, distributed, rank)
+    run, config, model_config = init_wandb(args, enabled=is_main)
+    config, model_config = broadcast_configs(config, model_config, distributed, rank)
     if is_main:
         print(f"Output directory: {config.output_dir.resolve()}", flush=True)
     if config.upload_to_hf:
@@ -218,18 +229,10 @@ def main() -> None:
 
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
     use_amp = config.amp and device.type == "cuda"
-    model_config = CaptchaModelConfig(
-        image_channels=1,
-        num_chars=config.num_chars,
-        alphabet=config.alphabet,
-        conv_channels=parse_conv_channels(config.conv_channels),
-        embedding_dim=config.embedding_dim,
-        dropout=config.dropout,
-    )
     if is_main:
         update_wandb_model_config(run, model_config)
 
-    datasets = load_mechaptcha_datasets(config)
+    datasets = load_mechaptcha_datasets(config, model_config)
     dataset_sha = dataset_hub_sha(config.dataset_name) if is_main else None
     if is_main and run is not None:
         run.summary["dataset/id"] = config.dataset_name
@@ -404,7 +407,7 @@ def main() -> None:
         channels_last=config.channels_last,
         collect_failures=True,
         collect_summary=True,
-        alphabet=config.alphabet,
+        alphabet=model_config.alphabet,
     )
     if is_main:
         final_val_metrics["global_step"] = global_step

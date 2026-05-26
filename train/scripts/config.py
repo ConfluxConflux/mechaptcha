@@ -12,7 +12,6 @@ from typing import Any, Union, cast, get_args, get_origin, get_type_hints
 from train.model import CaptchaModelConfig
 
 DEFAULT_OUTPUT_ROOT = Path("runs/captcha-cnn")
-DEFAULT_CONV_CHANNELS = ",".join(str(channel) for channel in CaptchaModelConfig().conv_channels)
 
 
 def default_output_dir() -> Path:
@@ -50,13 +49,8 @@ class TrainConfig:
     warmup_steps: int = 1_000
     weight_decay: float = 1e-4
     seed: int = 82
-    num_chars: int = 5
-    alphabet: str = "abcdefghijklmnopqrstuvwxyz"
     image_height: int = 64
     image_width: int = 160
-    conv_channels: str = DEFAULT_CONV_CHANNELS
-    embedding_dim: int = CaptchaModelConfig().embedding_dim
-    dropout: float = 0.0
     log_every: int = 50
     eval_every_steps: int = 500
     amp: bool = True
@@ -67,19 +61,21 @@ class TrainConfig:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train the simple CAPTCHA CNN.")
     add_dataclass_args(parser, TrainConfig)
+    add_dataclass_args(parser, CaptchaModelConfig)
     return parser.parse_args()
 
 
-def add_dataclass_args(parser: argparse.ArgumentParser, config_type: type[TrainConfig]) -> None:
+def add_dataclass_args(parser: argparse.ArgumentParser, config_type: type[object]) -> None:
     type_hints = get_type_hints(config_type)
     for config_field in fields(config_type):
         name = config_field.name
         arg_name = f"--{name.replace('_', '-')}"
+        arg_names = [arg_name]
+        underscore_arg_name = f"--{name}"
+        if underscore_arg_name != arg_name:
+            arg_names.append(underscore_arg_name)
         field_type = type_hints[name]
-        if config_field.default_factory is not MISSING:
-            default = config_field.default_factory()
-        else:
-            default = config_field.default
+        default = cli_default(config_field.default_factory() if config_field.default_factory is not MISSING else config_field.default)
         if unwrap_optional(field_type) is Path:
             default = str(default)
         kwargs: dict[str, Any] = {
@@ -94,12 +90,20 @@ def add_dataclass_args(parser: argparse.ArgumentParser, config_type: type[TrainC
         else:
             kwargs["type"] = cli_type(field_type)
 
-        parser.add_argument(arg_name, **kwargs)
+        parser.add_argument(*arg_names, **kwargs)
+
+
+def cli_default(value: object) -> object:
+    if isinstance(value, tuple):
+        return ",".join(str(item) for item in value)
+    return value
 
 
 def cli_type(field_type: object) -> type:
     field_type = unwrap_optional(field_type)
     if field_type is Path:
+        return str
+    if get_origin(field_type) is tuple:
         return str
     if field_type in (str, int, float):
         return field_type
@@ -125,6 +129,10 @@ def train_config_from_args(args: argparse.Namespace) -> TrainConfig:
     return train_config_from_dict(TrainConfig(), vars(args))
 
 
+def model_config_from_args(args: argparse.Namespace) -> CaptchaModelConfig:
+    return model_config_from_dict(CaptchaModelConfig(), vars(args))
+
+
 def train_config_from_dict(base: TrainConfig, values: dict[str, object]) -> TrainConfig:
     config_values = train_config_dict(base)
     train_values = values.get("train")
@@ -133,6 +141,54 @@ def train_config_from_dict(base: TrainConfig, values: dict[str, object]) -> Trai
     config_values.update({key: value for key, value in values.items() if key in config_values})
     config_values["output_dir"] = Path(str(config_values["output_dir"]))
     return TrainConfig(**cast(Any, config_values))
+
+
+def model_config_from_dict(base: CaptchaModelConfig, values: dict[str, object]) -> CaptchaModelConfig:
+    config_values = asdict(base)
+    model_values = values.get("model")
+    if isinstance(model_values, dict):
+        config_values.update(model_values)
+    config_values.update({key: value for key, value in values.items() if key in config_values})
+
+    type_hints = get_type_hints(CaptchaModelConfig)
+    parsed_values = {
+        key: parse_config_value(value, type_hints[key])
+        for key, value in config_values.items()
+    }
+    return CaptchaModelConfig(**cast(Any, parsed_values))
+
+
+def parse_config_value(value: object, field_type: object) -> object:
+    field_type = unwrap_optional(field_type)
+    if get_origin(field_type) is tuple:
+        return parse_int_tuple(value)
+    if field_type is int:
+        return int(cast(Any, value))
+    if field_type is float:
+        return float(cast(Any, value))
+    if field_type is str:
+        return str(value)
+    return value
+
+
+def parse_int_tuple(value: object) -> tuple[int, ...]:
+    if isinstance(value, str):
+        chunks = [chunk.strip() for chunk in value.split(",") if chunk.strip()]
+        return tuple(int(chunk) for chunk in chunks)
+    if isinstance(value, (list, tuple)):
+        return tuple(int(item) for item in value)
+    raise TypeError(f"Expected comma-separated string or sequence of ints, got {type(value).__name__}")
+
+
+def model_config_input_dict(config: CaptchaModelConfig) -> dict[str, object]:
+    return {key: cli_default(value) for key, value in asdict(config).items()}
+
+
+def combined_config_dict(train_config: TrainConfig, model_config: CaptchaModelConfig) -> dict[str, object]:
+    return {
+        **train_config_dict(train_config),
+        **model_config_input_dict(model_config),
+    }
 
 
 def wandb_env_config() -> dict[str, object]:
@@ -161,7 +217,7 @@ def model_config_dict(config: CaptchaModelConfig) -> dict[str, object]:
 
 
 def parse_conv_channels(value: str) -> tuple[int, ...]:
-    channels = tuple(int(chunk.strip()) for chunk in value.split(",") if chunk.strip())
+    channels = parse_int_tuple(value)
     if not channels:
         raise ValueError("conv_channels must contain at least one channel")
     return channels

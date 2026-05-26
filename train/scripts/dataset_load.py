@@ -8,6 +8,7 @@ from datasets import Dataset, Value, load_dataset
 from torch.utils.data import Dataset as TorchDataset
 from torchvision import transforms
 
+from train.model import CaptchaModelConfig
 from train.model.charset import encode_text
 from train.scripts.config import TrainConfig
 
@@ -62,7 +63,7 @@ class MechaptchaDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         return image_tensor, label_tensor, id_tensor, metadata_tensor
 
 
-def load_mechaptcha_datasets(config: TrainConfig) -> DatasetBundle:
+def load_mechaptcha_datasets(config: TrainConfig, model_config: CaptchaModelConfig) -> DatasetBundle:
     train_split = load_hf_split(config, config.train_split, config.train_size)
     val_split = load_hf_split(config, config.val_split, config.val_size)
     image_size = (config.image_height, config.image_width)
@@ -75,8 +76,8 @@ def load_mechaptcha_datasets(config: TrainConfig) -> DatasetBundle:
             text_column=config.text_column,
             id_column=config.id_column,
             image_size=image_size,
-            alphabet=config.alphabet,
-            num_chars=config.num_chars,
+            alphabet=model_config.alphabet,
+            num_chars=model_config.num_chars,
             metadata_columns=metadata_columns,
         ),
         val=MechaptchaDataset(
@@ -85,8 +86,8 @@ def load_mechaptcha_datasets(config: TrainConfig) -> DatasetBundle:
             text_column=config.text_column,
             id_column=config.id_column,
             image_size=image_size,
-            alphabet=config.alphabet,
-            num_chars=config.num_chars,
+            alphabet=model_config.alphabet,
+            num_chars=model_config.num_chars,
             metadata_columns=metadata_columns,
         ),
     )

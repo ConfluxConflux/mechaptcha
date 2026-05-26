@@ -15,7 +15,7 @@ class CaptchaModelConfig:
     conv_channels: tuple[int, ...] = (64, 128, 256, 384)
     pooled_shape: tuple[int, int] = (4, 10)
     embedding_dim: int = 512
-    dropout: float = 0.1
+    dropout: float = 0.0
 
     @property
     def num_classes(self) -> int:
