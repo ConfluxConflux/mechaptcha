@@ -165,7 +165,7 @@ def plot_full_layers(
                 [], [], color=color,
                 linestyle="--" if is_ctrl else "-",
                 marker="o", markersize=4,
-                label=exp.replace("_", " ")))
+                label=_display(exp)))
 
     # Legend entries for line styles
     if mlp:
