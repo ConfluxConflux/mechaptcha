@@ -83,7 +83,7 @@ def plot_linear_vs_mlp(linear_path: Path, mlp_path: Path, output_path: Path) -> 
         ax.set_xticks(range(n_l))
         ax.set_xticklabels(_HOOK_SHORT, fontsize=9)
         ax.set_yticks(range(n_exp))
-        ax.set_yticklabels([e.replace("_", " ") for e in order], fontsize=9)
+        ax.set_yticklabels([_display(e) for e in order], fontsize=9)
         ax.set_title(title, fontsize=10, pad=6)
         n_dist = sum(1 for e in order if "control" not in e)
         ax.axhline(n_dist - 0.5, color="black", lw=1.5, ls="--")
