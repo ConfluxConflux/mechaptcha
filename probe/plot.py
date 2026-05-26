@@ -223,7 +223,7 @@ def plot_arch(
 
     distortions = [e for e in results if "control" not in e]
     avg_acc = {
-        l: np.mean([results[e][l]["test_acc"] for e in distortions if l in results[e]])
+        l: np.mean([_get_acc(results, e, l) for e in distortions if l in results[e]])
         for l in plot_layers
     }
 
