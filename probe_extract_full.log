@@ -1,0 +1,4 @@
+Device: cpu
+Loading model from runs/siddharth/best.pt
+Probing layers: ('input', 'conv_block_0', 'conv_block_1', 'conv_block_2', 'conv_block_3', 'pool', 'embedding', 'logits')
+Extracting:   0%|          | 0/13 [00:00<?, ?it/s]
