@@ -311,7 +311,7 @@ def plot_arch(
     cb.ax.tick_params(labelsize=6)
 
     order = [e for e in _ARCH_ORDER if e in results]
-    matrix = np.array([[results[exp][l]["test_acc"] for l in plot_layers] for exp in order])
+    matrix = np.array([[_get_acc(results, exp, l) for l in plot_layers] for exp in order])
     cmap2 = LinearSegmentedColormap.from_list("wb", ["white", "#1565C0"])
     ax_h = fig.add_axes([0.06, 0.03, 0.87, 0.44])
     im = ax_h.imshow(matrix, cmap=cmap2, norm=plt.Normalize(0.5, 1.0), aspect="auto")
