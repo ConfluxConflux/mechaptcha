@@ -166,7 +166,7 @@ def plot_lines(
         for i, exp in enumerate(exps):
             if exp not in results:
                 continue
-            vals = [results[exp].get(l, {}).get("test_acc", float("nan")) for l in layer_list]
+            vals = [_get_acc(results, exp, l) for l in layer_list]
             is_control = cat == "Controls"
             color = colors[i % len(colors)]
             ax.plot(x, vals, marker="o", markersize=4, linewidth=1.5,
