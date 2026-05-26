@@ -152,7 +152,12 @@ def plot_lines(
     import matplotlib.lines as mlines
     from matplotlib.font_manager import FontProperties
 
-    layer_list = [l for l in layers if l not in ("input", "logits")]
+    # Only include layers that have at least one experiment with real data
+    layer_list = [
+        l for l in layers
+        if l not in ("input", "logits")
+        and any(not np.isnan(_get_acc(results, e, l)) for e in results)
+    ]
     layer_labels = [l.replace("conv_block_", "cb") for l in layer_list]
     x = list(range(len(layer_list)))
     bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
