@@ -165,7 +165,7 @@ def plot_lines(
                     linestyle="--" if is_control else "-", color=color, alpha=0.85)
             legend_handles.append(mlines.Line2D(
                 [], [], color=color, linestyle="--" if is_control else "-",
-                marker="o", markersize=4, label=exp.replace("_", " "),
+                marker="o", markersize=4, label=_display(exp),
             ))
 
     ax.set_xticks(x)
