@@ -76,6 +76,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--image-size", type=int, nargs=2, default=[64, 160],
                    metavar=("H", "W"), dest="image_size")
     p.add_argument("--batch-size", type=int, default=128, dest="batch_size")
+    p.add_argument("--max-train-ids", type=int, default=8000, dest="max_train_ids",
+                   help="Limit train ids per experiment during activation extraction")
 
     # Probe options
     p.add_argument("--classifier", choices=CLASSIFIERS, default="logistic_regression")
@@ -155,7 +157,7 @@ def main() -> None:
                 if not args.force_extract and not _needs_extraction(out, config):
                     tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
                     continue
-                extract_experiment(exp_dir, model, device, out, config)
+                extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
                 tqdm.write(f"  {exp_dir.name} -> {out}")
         else:
             print(f"Loading experiments from HF dataset {args.experiments}")
@@ -167,6 +169,7 @@ def main() -> None:
                 config=config,
                 experiment=args.experiment,
                 force_extract=args.force_extract,
+                max_train_ids=args.max_train_ids,
             )
 
     if args.extract_only:

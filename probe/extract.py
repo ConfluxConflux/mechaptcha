@@ -185,6 +185,7 @@ def extract_experiment(
     output_dir: Path,
     config: ProbeConfig,
     splits: tuple[str, ...] = ("train", "test"),
+    max_train_ids: int | None = None,
 ) -> None:
     """Extract and save activations for one experiment (all splits, both batches)."""
     labels = pd.read_csv(experiment_dir / "labels.csv")
@@ -192,6 +193,8 @@ def extract_experiment(
 
     for split in splits:
         split_ids = labels[labels["split"] == split]["id"].tolist()
+        if split == "train" and max_train_ids is not None:
+            split_ids = split_ids[:max_train_ids]
         if not split_ids:
             continue
 
@@ -214,6 +217,7 @@ def extract_hf_experiments(
     experiment: str | None = None,
     splits: tuple[str, ...] = ("train", "test"),
     force_extract: bool = False,
+    max_train_ids: int | None = None,
 ) -> list[Path]:
     """Extract activations from a HF paired-experiment dataset repo."""
     from datasets import DatasetDict, load_dataset
@@ -238,6 +242,8 @@ def extract_hf_experiments(
 
         for split in splits:
             split_dataset = dataset[split].filter(lambda row, exp=name: row["experiment"] == exp)
+            if split == "train" and max_train_ids is not None:
+                split_dataset = split_dataset.select(range(min(max_train_ids, len(split_dataset))))
             if len(split_dataset) == 0:
                 continue
 

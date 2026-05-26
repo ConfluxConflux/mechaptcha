@@ -21,6 +21,8 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 
 EXPERIMENTS_ROOT="${EXPERIMENTS_ROOT:-data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525}"
+MAX_TRAIN_IDS="${MAX_TRAIN_IDS:-8000}"
+SWEEP_OUTPUT_ROOT="${SWEEP_OUTPUT_ROOT:-probe_results/sweeps_train8k}"
 
 declare -A RUNS_BY_DIM=(
   [64]="runs/captcha-cnn/20260525-154713_slurm-15555201"
@@ -43,7 +45,7 @@ for dim in 64 128 256 384 512 1024 2048; do
     exit 1
   fi
 
-  output_dir="probe_results/sweeps/$dim"
+  output_dir="$SWEEP_OUTPUT_ROOT/$dim"
   activations_dir="$output_dir/activations"
   mkdir -p "$output_dir" "$activations_dir"
 
@@ -54,5 +56,6 @@ for dim in 64 128 256 384 512 1024 2048; do
     --checkpoint "$checkpoint" \
     --experiments "$EXPERIMENTS_ROOT" \
     --activations "$activations_dir" \
-    --output "$output_dir"
+    --output "$output_dir" \
+    --max-train-ids "$MAX_TRAIN_IDS"
 done
