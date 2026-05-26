@@ -36,7 +36,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig, get_model_layers
-from probe.extract import extract_experiment, load_model
+from probe.extract import extract_experiment, extract_hf_experiments, load_model
 from probe.fit import probe_experiment
 from probe.plot import plot_arch, plot_heatmap, plot_lines, plot_pca
 from probe.results import format_table, save_results
@@ -56,10 +56,11 @@ def _parse_args() -> argparse.Namespace:
                       help="Extract activations but do not train probes")
 
     # Paths
-    p.add_argument("--checkpoint", type=Path, default=None,
-                   help="Model checkpoint (.pt). Required unless --probe-only")
-    p.add_argument("--experiments", type=Path, default=Path("data/experiments"),
-                   help="Experiments root directory")
+    p.add_argument("--checkpoint", type=str, default=None,
+                   help="Local model checkpoint, HF model repo id, or huggingface.co model URL. "
+                        "Required unless --probe-only")
+    p.add_argument("--experiments", type=str, default="data/experiments",
+                   help="Experiments root directory or HF dataset repo id")
     p.add_argument("--activations", type=Path, default=Path("probe_results/activations"),
                    help="Directory to read/write cached activations")
     p.add_argument("--output", type=Path, default=Path("probe_results"),
@@ -99,6 +100,10 @@ def _resolve_experiments(args: argparse.Namespace, root: Path) -> list[Path]:
     return sorted(p for p in root.iterdir() if p.is_dir())
 
 
+def _is_local_experiments_root(value: str) -> bool:
+    return Path(value).exists()
+
+
 def _needs_extraction(activations_dir: Path, config: ProbeConfig) -> bool:
     """True if any expected activation file is missing."""
     for split in ("train", "test"):
@@ -128,28 +133,41 @@ def main() -> None:
         if args.checkpoint is None:
             print("Error: --checkpoint is required unless --probe-only is set.", file=sys.stderr)
             sys.exit(1)
-        if not args.checkpoint.exists():
-            print(f"Error: checkpoint not found: {args.checkpoint}", file=sys.stderr)
-            sys.exit(1)
-
-        experiments = _resolve_experiments(args, args.experiments)
+        local_experiments = _is_local_experiments_root(args.experiments)
+        experiments = _resolve_experiments(args, Path(args.experiments)) if local_experiments else []
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Device: {device}")
         print(f"Loading model from {args.checkpoint}")
-        model = load_model(args.checkpoint, config)
+        try:
+            model = load_model(args.checkpoint, config)
+        except FileNotFoundError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
         model.to(device)
 
         # Narrow config to layers that actually exist in this model
         config = config.for_model(model)
         print(f"Probing layers: {config.layers}")
 
-        for exp_dir in tqdm(experiments, desc="Extracting"):
-            out = args.activations / exp_dir.name
-            if not args.force_extract and not _needs_extraction(out, config):
-                tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
-                continue
-            extract_experiment(exp_dir, model, device, out, config)
-            tqdm.write(f"  {exp_dir.name} -> {out}")
+        if local_experiments:
+            for exp_dir in tqdm(experiments, desc="Extracting"):
+                out = args.activations / exp_dir.name
+                if not args.force_extract and not _needs_extraction(out, config):
+                    tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
+                    continue
+                extract_experiment(exp_dir, model, device, out, config)
+                tqdm.write(f"  {exp_dir.name} -> {out}")
+        else:
+            print(f"Loading experiments from HF dataset {args.experiments}")
+            extract_hf_experiments(
+                dataset_id=args.experiments,
+                model=model,
+                device=device,
+                output_root=args.activations,
+                config=config,
+                experiment=args.experiment,
+                force_extract=args.force_extract,
+            )
 
     if args.extract_only:
         return
@@ -158,8 +176,13 @@ def main() -> None:
     if args.probe_only:
         experiments = _resolve_experiments(args, args.activations)
     else:
-        experiments = _resolve_experiments(args, args.experiments)
-        experiments = [args.activations / e.name for e in experiments]
+        if _is_local_experiments_root(args.experiments):
+            experiments = _resolve_experiments(args, Path(args.experiments))
+            experiments = [args.activations / e.name for e in experiments]
+        elif args.experiment:
+            experiments = [args.activations / args.experiment]
+        else:
+            experiments = _resolve_experiments(args, args.activations)
 
     all_results = {}
     for exp_dir in tqdm(experiments, desc="Probing"):

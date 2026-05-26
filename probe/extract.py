@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -24,8 +25,9 @@ _CAPTCHA_MODEL_CONFIG_FIELDS = {
 }
 
 
-def load_model(checkpoint_path: Path, config: ProbeConfig | None = None) -> CaptchaCNN:
+def load_model(checkpoint_path: str | Path, config: ProbeConfig | None = None) -> CaptchaCNN:
     """Load a CaptchaCNN from a training checkpoint."""
+    checkpoint_path = resolve_checkpoint(checkpoint_path)
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     raw_cfg = ckpt.get("model_config", {})
     # Strip computed properties (num_classes, flattened_features) that aren't dataclass fields
@@ -35,6 +37,48 @@ def load_model(checkpoint_path: Path, config: ProbeConfig | None = None) -> Capt
     model.load_state_dict(ckpt["model"])
     model.eval()
     return model
+
+
+def resolve_checkpoint(checkpoint: str | Path) -> Path:
+    """Resolve a local checkpoint path or download one from a HF model repo."""
+    path = Path(checkpoint)
+    if path.exists():
+        return path
+
+    repo_id, filename = parse_hf_checkpoint(str(checkpoint))
+    if repo_id is None:
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
+
+    from huggingface_hub import hf_hub_download
+
+    filenames = [filename] if filename else ["best.pt", "checkpoints/best.pt", "checkpoints/last.pt"]
+    errors: list[Exception] = []
+    for candidate in filenames:
+        try:
+            return Path(hf_hub_download(repo_id=repo_id, filename=candidate, repo_type="model"))
+        except Exception as exc:
+            errors.append(exc)
+    raise FileNotFoundError(
+        f"Could not find a checkpoint in HF model repo {repo_id!r}. "
+        f"Tried: {', '.join(filenames)}"
+    ) from errors[-1]
+
+
+def parse_hf_checkpoint(value: str) -> tuple[str | None, str | None]:
+    """Return (repo_id, filename) for HF repo ids or huggingface.co URLs."""
+    parsed = urlparse(value)
+    if parsed.netloc == "huggingface.co":
+        parts = [p for p in parsed.path.split("/") if p]
+        if len(parts) < 2:
+            return None, None
+        repo_id = "/".join(parts[:2])
+        if len(parts) >= 5 and parts[2] in {"blob", "resolve"}:
+            return repo_id, "/".join(parts[4:])
+        return repo_id, None
+
+    if value.count("/") == 1 and not value.endswith(".pt"):
+        return value, None
+    return None, None
 
 
 def _make_transform(image_size: tuple[int, int]) -> transforms.Compose:
@@ -68,6 +112,17 @@ def extract_activations(
     "embedding" — [B, 256] as-is
     "logits" — model output [B, 5, 26] flattened to [B, 130]
     """
+    images = [Image.open(p).convert("L") for p in image_paths]
+    return extract_activations_from_images(model, images, device, config)
+
+
+def extract_activations_from_images(
+    model: CaptchaCNN,
+    images: list[Image.Image],
+    device: torch.device,
+    config: ProbeConfig,
+) -> dict[str, np.ndarray]:
+    """Run in-memory images through the model and return activations."""
     transform = _make_transform(config.image_size)
     conv_layers = {"conv_block_0", "conv_block_1", "conv_block_2"}
     hook_layers_needed = [l for l in config.layers if l in HOOK_LAYERS]
@@ -87,10 +142,10 @@ def extract_activations(
     handles = _register_hooks(model, hook_layers_needed, make_hook)
 
     with torch.no_grad():
-        for i in range(0, len(image_paths), config.batch_size):
+        for i in range(0, len(images), config.batch_size):
             batch = torch.stack([
-                transform(Image.open(p).convert("L"))
-                for p in image_paths[i:i + config.batch_size]
+                transform(img.convert("L"))
+                for img in images[i:i + config.batch_size]
             ]).to(device)
 
             if "input" in config.layers:
@@ -148,3 +203,60 @@ def extract_experiment(
             activations = extract_activations(model, paths, device, config)
             for layer, arr in activations.items():
                 np.save(output_dir / f"{split}_{batch}_{layer}.npy", arr)
+
+
+def extract_hf_experiments(
+    dataset_id: str,
+    model: CaptchaCNN,
+    device: torch.device,
+    output_root: Path,
+    config: ProbeConfig,
+    experiment: str | None = None,
+    splits: tuple[str, ...] = ("train", "test"),
+    force_extract: bool = False,
+) -> list[Path]:
+    """Extract activations from a HF paired-experiment dataset repo."""
+    from datasets import DatasetDict, load_dataset
+
+    dataset = load_dataset(dataset_id)
+    if not isinstance(dataset, DatasetDict):
+        raise TypeError(f"Expected {dataset_id!r} to load as a DatasetDict with train/test splits.")
+
+    available = set(dataset.keys())
+    missing = set(splits) - available
+    if missing:
+        raise ValueError(f"HF dataset {dataset_id!r} is missing required splits: {sorted(missing)}")
+
+    experiment_names = [experiment] if experiment else sorted(set(dataset[splits[0]]["experiment"]))
+    output_dirs: list[Path] = []
+    for name in experiment_names:
+        output_dir = output_root / name
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dirs.append(output_dir)
+        if not force_extract and not _needs_hf_extraction(output_dir, config, splits):
+            continue
+
+        for split in splits:
+            split_dataset = dataset[split].filter(lambda row, exp=name: row["experiment"] == exp)
+            if len(split_dataset) == 0:
+                continue
+
+            ids = np.array(split_dataset["id"])
+            np.save(output_dir / f"{split}_ids.npy", ids)
+
+            for batch, image_column in (("batch_a", "image_a"), ("batch_b", "image_b")):
+                images = [example[image_column] for example in split_dataset]
+                activations = extract_activations_from_images(model, images, device, config)
+                for layer, arr in activations.items():
+                    np.save(output_dir / f"{split}_{batch}_{layer}.npy", arr)
+
+    return output_dirs
+
+
+def _needs_hf_extraction(output_dir: Path, config: ProbeConfig, splits: tuple[str, ...]) -> bool:
+    for split in splits:
+        for batch in ("batch_a", "batch_b"):
+            for layer in config.layers:
+                if not (output_dir / f"{split}_{batch}_{layer}.npy").exists():
+                    return True
+    return False
