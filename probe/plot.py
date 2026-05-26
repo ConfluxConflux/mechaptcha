@@ -10,6 +10,16 @@ from probe.results import AllResults
 
 _CONTROL_SUFFIXES = ("dumb_control", "variation_control")
 
+_DISPLAY_NAMES: dict[str, str] = {
+    "wave":      "letter wave",
+    "easy_line": "horizontal line",
+    "hard_line": "angled line",
+}
+
+
+def _display(name: str) -> str:
+    return _DISPLAY_NAMES.get(name, name).replace("_", " ")
+
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
     "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
