@@ -317,7 +317,7 @@ def plot_arch(
     ax_h.set_xticks(range(len(plot_layers)))
     ax_h.set_xticklabels(short_labels, fontsize=9)
     ax_h.set_yticks(range(len(order)))
-    ax_h.set_yticklabels([e.replace("_", " ") for e in order], fontsize=9)
+    ax_h.set_yticklabels([_display(e) for e in order], fontsize=9)
     ax_h.set_xlabel("Layer  (left → right = deeper)", fontsize=9)
     ax_h.set_title(
         "Each cell = one trained logistic regression  |  color = test accuracy  (50% = chance)",
