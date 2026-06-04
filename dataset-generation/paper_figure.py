@@ -105,29 +105,30 @@ def make_paper_figure():
     print("Loading fonts...")
     fonts = load_fonts(FONT_DIR)
 
-    n_cat_cols = 3
-    n_cat_rows = 5   # 3×5 = 15 cells, 14 perturbations + 1 empty
-    n_rcols    = 3
-    n_rrows    = 5   # 15 random samples
+    n_cat = len(_ORDER)   # 14 rows, single column
+    n_rcols = 3
+    n_rrows = 5           # 15 random samples
 
-    # hspace ≈ 0.50 gives each row enough gap for the set_title label while keeping
-    # cells at roughly the correct 2.5:1 aspect ratio for the 160×64 CAPTCHA images.
-    HSPACE = 0.40   # room above each image for the set_title label
-    WSPACE = 0.08
+    # hspace provides the gap above each image row for the set_title label
+    HSPACE = 0.35
+    WSPACE = 0.06
 
-    fig = plt.figure(figsize=(7.0, 4.5), facecolor="white")
+    # Taller figure reduces the horizontal squish in the left single-column panel
+    fig = plt.figure(figsize=(7.0, 6.0), facecolor="white")
 
-    # ── Outer layout: [catalogue | samples], equal-width panels ───────────────
+    # ── Outer layout: [catalogue | samples] ────────────────────────────────────
+    # Left panel is wider (single column needs room for long labels like
+    # "text: "chars" | perturbation: spacing jitter" ≈ 1.9" at 7pt).
     gs = gridspec.GridSpec(
         1, 2, figure=fig,
-        width_ratios=[1.0, 1.0],
+        width_ratios=[1.2, 1.0],
         left=0.01, right=0.99,
-        top=0.91, bottom=0.01,
+        top=0.93, bottom=0.01,
         wspace=0.06,
     )
     gs_cat = gridspec.GridSpecFromSubplotSpec(
-        n_cat_rows, n_cat_cols, subplot_spec=gs[0],
-        hspace=HSPACE, wspace=WSPACE,
+        n_cat, 1, subplot_spec=gs[0],
+        hspace=HSPACE,
     )
     gs_smp = gridspec.GridSpecFromSubplotSpec(
         n_rrows, n_rcols, subplot_spec=gs[1],
