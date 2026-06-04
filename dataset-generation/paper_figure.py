@@ -170,10 +170,17 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
-        distortion_str = ", ".join(sorted(active)) if active else "none"
-        full = f'text: "{text}" | perturbations: {distortion_str}'
-        short = full if len(full) <= _TITLE_MAX else full[:_TITLE_MAX - 1] + "…"
-        ax.set_title(short, fontsize=7, pad=2, loc="left")
+        sorted_active = sorted(active)
+        if not sorted_active:
+            perturb_str = "none"
+        elif len(sorted_active) <= _MAX_PERTURBS_SHOWN:
+            perturb_str = ", ".join(sorted_active)
+        else:
+            perturb_str = ", ".join(sorted_active[:_MAX_PERTURBS_SHOWN]) + f", +{len(sorted_active) - _MAX_PERTURBS_SHOWN}"
+        ax.set_title(
+            f'text: "{text}" | perturbations: {perturb_str}',
+            fontsize=7, pad=2, loc="left",
+        )
 
     # ── Panel headers ──────────────────────────────────────────────────────────
     fig.text(0.255, 0.945, "Individual perturbations",
