@@ -78,7 +78,7 @@ def make_qa():
 
     # ── Section 2: isolation ─────────────────────────────────────────────────
     isolation_seed = 2000
-    isolation_items = [("clean (no distortion)", set())] + \
+    isolation_items = [("clean (no perturbation)", set())] + \
                       [(k, {k}) for k in DISTORTION_KEYS]
 
     for j, (label, active) in enumerate(isolation_items):
