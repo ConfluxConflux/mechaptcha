@@ -215,7 +215,26 @@ def main() -> None:
     if metrics["seq_acc"] >= best_seq_acc:
         save_checkpoint(model, args.output)
         print(f"Saved final checkpoint -> {args.output}")
-    print(f"Best val seq_acc: {max(best_seq_acc, metrics['seq_acc']):.3f}")
+    best_seq_acc = max(best_seq_acc, metrics["seq_acc"])
+    print(f"Best val seq_acc: {best_seq_acc:.3f}")
+
+    import json
+    from dataclasses import asdict
+    run_metrics = {
+        "val_char_acc": metrics["char_acc"],
+        "val_seq_acc": metrics["seq_acc"],
+        "best_val_seq_acc": best_seq_acc,
+        "freeze_backbone": args.freeze_backbone,
+        "backbone": dino_config.backbone,
+        "model_name": dino_config.model_name,
+        "lora_r": dino_config.lora_r,
+        "trainable_params": n_train,
+        "epochs": args.epochs,
+        "train_size": args.train_size,
+    }
+    metrics_path = args.output.with_name("metrics.json")
+    metrics_path.write_text(json.dumps(run_metrics, indent=2))
+    print(f"Metrics saved to {metrics_path}")
 
 
 if __name__ == "__main__":

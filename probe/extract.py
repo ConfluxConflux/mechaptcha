@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.model import CaptchaCNN, CaptchaModelConfig
+from train.model.charset import decode_indices
 from probe.config import HOOK_LAYERS, ProbeConfig, get_model_layers
 
 
@@ -103,7 +104,8 @@ def extract_activations(
     image_paths: list[Path],
     device: torch.device,
     config: ProbeConfig,
-) -> dict[str, np.ndarray]:
+    return_logits: bool = False,
+) -> dict[str, np.ndarray] | tuple[dict[str, np.ndarray], torch.Tensor]:
     """Run images through the model and return [N, features] arrays per probed layer.
 
     "input"  — raw pixels [B, 1, H, W] flattened; always flat regardless of conv_reduction
@@ -111,9 +113,12 @@ def extract_activations(
     "pool"   — flattened [B, 5120]; preserves spatial structure
     "embedding" — [B, 256] as-is
     "logits" — model output [B, 5, 26] flattened to [B, 130]
+
+    When return_logits=True, returns (activations, logits_tensor) where logits_tensor
+    is [N, num_chars, vocab_size] — used for transcription accuracy computation.
     """
     images = [Image.open(p).convert("L") for p in image_paths]
-    return extract_activations_from_images(model, images, device, config)
+    return extract_activations_from_images(model, images, device, config, return_logits=return_logits)
 
 
 def extract_activations_from_images(
@@ -121,7 +126,8 @@ def extract_activations_from_images(
     images: list[Image.Image],
     device: torch.device,
     config: ProbeConfig,
-) -> dict[str, np.ndarray]:
+    return_logits: bool = False,
+) -> dict[str, np.ndarray] | tuple[dict[str, np.ndarray], torch.Tensor]:
     """Run in-memory images through the model and return activations."""
     transform = _make_transform(config.image_size)
     conv_layers = {"conv_block_0", "conv_block_1", "conv_block_2"}
@@ -129,6 +135,7 @@ def extract_activations_from_images(
 
     current: dict[str, np.ndarray] = {}
     accumulated: dict[str, list[np.ndarray]] = {name: [] for name in config.layers}
+    all_logits: list[torch.Tensor] = []
 
     def make_hook(name: str):
         def hook(module, input, output):
@@ -152,6 +159,7 @@ def extract_activations_from_images(
                 current["input"] = batch.cpu().flatten(start_dim=1).numpy()
 
             logits = model(batch)
+            all_logits.append(logits.detach().cpu())
 
             if "logits" in config.layers:
                 current["logits"] = logits.detach().cpu().flatten(start_dim=1).numpy()
@@ -162,7 +170,10 @@ def extract_activations_from_images(
     for h in handles:
         h.remove()
 
-    return {name: np.concatenate(chunks) for name, chunks in accumulated.items()}
+    activations = {name: np.concatenate(chunks) for name, chunks in accumulated.items()}
+    if return_logits:
+        return activations, torch.cat(all_logits, dim=0)
+    return activations
 
 
 def _register_hooks(model: CaptchaCNN, layers: list[str], make_hook) -> list:
@@ -178,6 +189,18 @@ def _register_hooks(model: CaptchaCNN, layers: list[str], make_hook) -> list:
     return handles
 
 
+def _transcription_accuracy(
+    logits: torch.Tensor, texts: list[str], alphabet: str,
+) -> tuple[float, float]:
+    """Seq and char accuracy from raw [B, num_chars, vocab] logits."""
+    preds = logits.argmax(dim=-1).cpu().numpy()  # [B, num_chars]
+    decoded = [decode_indices(row.tolist(), alphabet) for row in preds]
+    seq_correct = sum(d == t for d, t in zip(decoded, texts))
+    char_correct = sum(dc == tc for d, t in zip(decoded, texts) for dc, tc in zip(d, t))
+    total_chars = sum(len(t) for t in texts)
+    return seq_correct / max(1, len(texts)), char_correct / max(1, total_chars)
+
+
 def extract_experiment(
     experiment_dir: Path,
     model: CaptchaCNN,
@@ -186,26 +209,38 @@ def extract_experiment(
     config: ProbeConfig,
     splits: tuple[str, ...] = ("train", "test"),
     max_train_ids: int | None = None,
-) -> None:
-    """Extract and save activations for one experiment (all splits, both batches)."""
+) -> dict[str, dict[str, float]]:
+    """Extract and save activations for one experiment; return transcription accuracy.
+
+    Returns {split: {batch_a_seq_acc, batch_b_seq_acc, batch_a_char_acc, batch_b_char_acc}}.
+    """
     labels = pd.read_csv(experiment_dir / "labels.csv")
     output_dir.mkdir(parents=True, exist_ok=True)
+    alphabet = model.config.alphabet
+    accuracy: dict[str, dict[str, float]] = {}
 
     for split in splits:
-        split_ids = labels[labels["split"] == split]["id"].tolist()
+        split_rows = labels[labels["split"] == split]
+        split_ids = split_rows["id"].tolist()
         if split == "train" and max_train_ids is not None:
             split_ids = split_ids[:max_train_ids]
         if not split_ids:
             continue
-
+        texts = split_rows.set_index("id").loc[split_ids, "text"].tolist()
         np.save(output_dir / f"{split}_ids.npy", np.array(split_ids))
 
+        accuracy[split] = {}
         for batch in ("batch_a", "batch_b"):
             img_dir = experiment_dir / batch / "images"
             paths = [img_dir / f"{sid:06d}.png" for sid in split_ids]
-            activations = extract_activations(model, paths, device, config)
+            activations, logits = extract_activations(model, paths, device, config, return_logits=True)
             for layer, arr in activations.items():
                 np.save(output_dir / f"{split}_{batch}_{layer}.npy", arr)
+            seq_acc, char_acc = _transcription_accuracy(logits, texts, alphabet)
+            accuracy[split][f"{batch}_seq_acc"] = seq_acc
+            accuracy[split][f"{batch}_char_acc"] = char_acc
+
+    return accuracy
 
 
 def extract_hf_experiments(

@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -157,13 +158,20 @@ def main() -> None:
         print(f"Probing layers: {config.layers}")
 
         if local_experiments:
+            transcription_accuracy: dict = {}
             for exp_dir in tqdm(experiments, desc="Extracting"):
                 out = args.activations / exp_dir.name
                 if not args.force_extract and not _needs_extraction(out, config):
                     tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
                     continue
-                extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
+                acc = extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
+                transcription_accuracy[exp_dir.name] = acc
                 tqdm.write(f"  {exp_dir.name} -> {out}")
+            if transcription_accuracy:
+                acc_path = args.output / "transcription_accuracy.json"
+                args.output.mkdir(parents=True, exist_ok=True)
+                acc_path.write_text(json.dumps(transcription_accuracy, indent=2))
+                print(f"Transcription accuracy saved to {acc_path}")
         else:
             print(f"Loading experiments from HF dataset {args.experiments}")
             extract_hf_experiments(

@@ -38,23 +38,46 @@ CHARTS_DIR = Path(__file__).resolve().parent
 # Candidate runs, in plot order. Only those whose results.json exists are used.
 # (label, results.json path, activations dir or None)
 CANDIDATES: list[tuple[str, Path, Path | None]] = [
-    ("CNN (trained from scratch)",       REPO_ROOT / "probe_results/full/results.json",              None),
-    ("DINOv2-S (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-small/results.json",       REPO_ROOT / "dino_results/dinov2-small/activations"),
-    ("DINOv2-B (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-base/results.json",        REPO_ROOT / "dino_results/dinov2-base/activations"),
-    ("DINOv2-L (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-large/results.json",       REPO_ROOT / "dino_results/dinov2-large/activations"),
-    ("CLIP-B (lang-sup, LoRA)",          REPO_ROOT / "dino_results/clip-vit-base/results.json",      REPO_ROOT / "dino_results/clip-vit-base/activations"),
-    ("ViT-B/16 (supervised, LoRA)",      REPO_ROOT / "dino_results/vit-base-supervised/results.json",REPO_ROOT / "dino_results/vit-base-supervised/activations"),
+    ("CNN",                REPO_ROOT / "probe_results/full/results.json",                         None),
+    ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
+    ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
+    ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
+    ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",             REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
+    ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
+    ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
 ]
 
-# For each candidate, if a results.json exists at mlp_results_path, a linear-vs-mlp
-# comparison chart is also generated. MLP probes reuse the same activations.
 MLP_RESULTS: dict[str, Path] = {
-    "DINOv2-S (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-small/mlp/results.json",
-    "DINOv2-B (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-base/mlp/results.json",
-    "DINOv2-L (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-large/mlp/results.json",
-    "CLIP-B (lang-sup, LoRA)":     REPO_ROOT / "dino_results/clip-vit-base/mlp/results.json",
-    "ViT-B/16 (supervised, LoRA)": REPO_ROOT / "dino_results/vit-base-supervised/mlp/results.json",
-    "CNN (trained from scratch)":  REPO_ROOT / "probe_results/full_mlp/results.json",
+    "CNN":              REPO_ROOT / "probe_results/full_mlp/results.json",
+    "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/mlp/results.json",
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/mlp/results.json",
+    "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/mlp/results.json",
+    "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/mlp/results.json",
+    "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/mlp/results.json",
+    "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/mlp/results.json",
+}
+
+TRAINING_METRICS: dict[str, Path | dict] = {
+    "CNN": {
+        "val_seq_acc": 0.9569, "val_char_acc": None,
+        "freeze_backbone": False, "train_size": None,
+    },
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_runs/dinov2-small-frozen/metrics.json",
+    "DINOv2-S-lora":    REPO_ROOT / "dino_runs/dinov2-small-lora/metrics.json",
+    "DINOv2-B-lora":    REPO_ROOT / "dino_runs/dinov2-base-lora/metrics.json",
+    "DINOv2-L-lora":    REPO_ROOT / "dino_runs/dinov2-large-lora/metrics.json",
+    "CLIP-B-lora":      REPO_ROOT / "dino_runs/clip-vit-base-lora/metrics.json",
+    "ViT-B-lora":       REPO_ROOT / "dino_runs/vit-base-supervised-lora/metrics.json",
+}
+
+TRANSCRIPTION_ACCURACY: dict[str, Path] = {
+    "CNN":              REPO_ROOT / "probe_results/full/transcription_accuracy.json",
+    "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/transcription_accuracy.json",
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/transcription_accuracy.json",
+    "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/transcription_accuracy.json",
+    "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
+    "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
+    "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
 }
 
 _CONTROL = ("dumb_control", "variation_control")
@@ -182,6 +205,69 @@ def plot_per_model_accuracy(
     print(f"  per_model_accuracy.png")
 
 
+def plot_transcription_accuracy(out: Path, val_size: int = 5000, pgf: bool = False) -> None:
+    """Bar chart of val sequence accuracy across all models, with binomial SE error bars.
+
+    Groups LoRA-adapted models together; the frozen baseline is visually distinct.
+    Error bars are ±1 binomial SE = sqrt(p*(1-p)/n) using val_size as n.
+    """
+    import json
+    import matplotlib.pyplot as plt
+
+    labels, accs, errs, colors = [], [], [], []
+    for label, entry in TRAINING_METRICS.items():
+        if isinstance(entry, Path):
+            if not entry.exists():
+                continue
+            m = json.loads(entry.read_text())
+        else:
+            m = entry
+        seq_acc = m.get("val_seq_acc") or m.get("best_val_seq_acc")
+        if seq_acc is None:
+            continue
+        n = m.get("val_size") or val_size
+        se = (seq_acc * (1 - seq_acc) / n) ** 0.5
+        labels.append(label)
+        accs.append(seq_acc)
+        errs.append(se)
+        frozen = m.get("freeze_backbone", False)
+        colors.append("#b0b0b0" if frozen else "#3b6ea5")
+
+    if not labels:
+        print("  transcription_accuracy.png skipped (no metrics.json files found yet)")
+        return
+
+    fig, ax = plt.subplots(figsize=(max(7, 1.5 * len(labels)), 5))
+    x = range(len(labels))
+    bars = ax.bar(x, accs, color=colors, width=0.6,
+                  yerr=errs, capsize=4, error_kw={"elinewidth": 1.2, "ecolor": "#555"})
+
+    for bar, acc, err in zip(bars, accs, errs):
+        ax.text(bar.get_x() + bar.get_width() / 2, acc + err + 0.005,
+                f"{acc:.1%}", ha="center", va="bottom", fontsize=8)
+
+    ax.axhline(1/26, color="#cc3300", linestyle="--", linewidth=1, label="Chance per char (1/26 ≈ 3.8%)")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=9)
+    ax.set_ylabel("Val sequence accuracy")
+    ax.set_ylim(0, min(1.05, max(accs) + 0.12))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title("CAPTCHA transcription accuracy by model\n"
+                 "(LoRA-adapted = blue, frozen backbone = grey)", fontsize=11)
+
+    from matplotlib.patches import Patch
+    ax.legend(handles=[
+        Patch(facecolor="#3b6ea5", label="LoRA-adapted"),
+        Patch(facecolor="#b0b0b0", label="Frozen backbone (heads only)"),
+    ] + [ax.get_legend_handles_labels()[0][-1]], fontsize=8, loc="lower right")
+
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    _save(fig, out, pgf)
+    plt.close(fig)
+    print(f"  wrote {out.relative_to(REPO_ROOT)}")
+
+
 def plot_depth_curve(models, out: Path, pgf: bool = False) -> None:
     import matplotlib.pyplot as plt
 
@@ -234,6 +320,54 @@ def plot_peak_vs_output(models, out: Path, pgf: bool = False) -> None:
     _save(fig, out, pgf)
     plt.close(fig)
     print(f"  wrote {out.relative_to(REPO_ROOT)}")
+
+
+def plot_task_accuracy(
+    acc_data: dict,
+    out: Path,
+    label: str,
+    pgf: bool = False,
+) -> None:
+    """Grouped bar chart of CAPTCHA transcription accuracy per distortion for one model.
+
+    Shows test batch_a (distorted) and batch_b (clean) seq accuracy side by side,
+    sorted by batch_a accuracy ascending so hardest distortions appear left.
+    """
+    _CONTROL_EXPS = {"dumb_control", "variation_control"}
+    exps = [e for e in acc_data if e not in _CONTROL_EXPS]
+    exps.sort(key=lambda e: acc_data[e].get("test", acc_data[e].get("train", {})).get("batch_a_seq_acc", 0))
+
+    def _get(exp, key):
+        split = acc_data[exp].get("test") or acc_data[exp].get("train") or {}
+        return split.get(key, float("nan"))
+
+    a_accs = [_get(e, "batch_a_seq_acc") for e in exps]
+    b_accs = [_get(e, "batch_b_seq_acc") for e in exps]
+
+    x = np.arange(len(exps))
+    w = 0.38
+    fig, ax = plt.subplots(figsize=(max(8, 1.4 * len(exps)), 5))
+    ax.bar(x - w / 2, a_accs, w, label="Distorted (batch A)", color="#d62728", alpha=0.85)
+    ax.bar(x + w / 2, b_accs, w, label="Clean (batch B)", color="#1f77b4", alpha=0.85)
+
+    for xi, (a, b) in enumerate(zip(a_accs, b_accs)):
+        if not np.isnan(a):
+            ax.text(xi - w / 2, a + 0.008, f"{a:.0%}", ha="center", fontsize=7)
+        if not np.isnan(b):
+            ax.text(xi + w / 2, b + 0.008, f"{b:.0%}", ha="center", fontsize=7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([_display(e) for e in exps], rotation=20, ha="right")
+    ax.set_ylabel("Sequence accuracy (test set)")
+    ax.set_ylim(0, 1.12)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title(f"CAPTCHA task accuracy per distortion — {label}", fontsize=11)
+    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle=":")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    _save(fig, out, pgf)
+    plt.close(fig)
 
 
 def _short_label(label: str) -> str:
@@ -370,11 +504,21 @@ def main() -> None:
             plot_linear_vs_mlp(res, mlp_res, out_dir / "linear_vs_mlp.png", layers=layers, pgf=args.pgf)
             print(f"  linear_vs_mlp.png")
 
+        acc_path = TRANSCRIPTION_ACCURACY.get(label)
+        if acc_path and acc_path.exists():
+            import json
+            acc_data = json.loads(acc_path.read_text())
+            plot_task_accuracy(acc_data, out_dir / "task_accuracy.png", label, pgf=args.pgf)
+            print(f"  task_accuracy.png")
+        else:
+            print(f"  task_accuracy.png skipped (no transcription_accuracy.json)")
+
     print(f"\nCollated charts -> charts/collated/")
     collate_plots(models, pgf=args.pgf)
     plot_depth_curve(models, CHARTS_DIR / "collated" / "decodability_vs_depth.png", pgf=args.pgf)
     if len(models) > 1:
         plot_peak_vs_output(models, CHARTS_DIR / "collated" / "peak_vs_output.png", pgf=args.pgf)
+    plot_transcription_accuracy(CHARTS_DIR / "transcription_accuracy.png", pgf=args.pgf)
     print("Done.")
 
 
