@@ -8,6 +8,14 @@ import numpy as np
 from probe.config import ALL_LAYERS
 from probe.results import AllResults
 
+
+def _save(fig, path: Path, pgf: bool) -> None:
+    """Save fig to path (PNG/PDF/etc.) and, when pgf=True, also as a same-named .pgf file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    if pgf:
+        fig.savefig(path.with_suffix(".pgf"), bbox_inches="tight")
+
 _CONTROL_SUFFIXES = ("dumb_control", "variation_control")
 
 _DISPLAY_NAMES: dict[str, str] = {
@@ -89,6 +97,8 @@ def plot_heatmap(
     output_path: Path,
     layers: tuple[str, ...] = ALL_LAYERS,
     title: str = "Linear probe accuracy (test set)",
+    pgf: bool = False,
+    ax=None,
 ) -> None:
     """Heatmap of test accuracy for each experiment × layer."""
     import matplotlib.pyplot as plt
@@ -108,7 +118,10 @@ def plot_heatmap(
 
     cmap = plt.cm.Blues
     norm = mcolors.Normalize(vmin=0.5, vmax=1.0)
-    fig, ax = plt.subplots(figsize=(max(6, 1.6 * n_layers), max(4, 0.5 * n_exp + 1.5)))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(max(6, 1.6 * n_layers), max(4, 0.5 * n_exp + 1.5)))
+    fig = ax.figure
     im = ax.imshow(matrix, aspect="auto", cmap=cmap, norm=norm)
 
     for i in range(n_exp):
@@ -133,10 +146,10 @@ def plot_heatmap(
     cbar.ax.axhline(0.5, color="red", linewidth=1, linestyle="--")
 
     ax.set_title(title, fontsize=10, pad=10)
-    fig.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    if _standalone:
+        fig.tight_layout()
+        _save(fig, output_path, pgf)
+        plt.close(fig)
 
 
 # ── Line chart ────────────────────────────────────────────────────────────────
@@ -146,6 +159,8 @@ def plot_lines(
     output_path: Path,
     layers: tuple[str, ...] = ALL_LAYERS,
     title: str = "Linear probe accuracy by layer",
+    pgf: bool = False,
+    ax=None,
 ) -> None:
     """Line chart of test accuracy vs. layer, grouped legend on the right."""
     import matplotlib.pyplot as plt
@@ -162,7 +177,9 @@ def plot_lines(
     x = list(range(len(layer_list)))
     bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(9, 5))
     legend_handles: list = []
 
     for cat, exps in _CATEGORIES.items():
@@ -200,9 +217,9 @@ def plot_lines(
         else:
             text.set_fontproperties(normal_fp)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    if _standalone:
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
 
 
 # ── Architecture diagram ──────────────────────────────────────────────────────
@@ -211,6 +228,7 @@ def plot_arch(
     results: AllResults,
     output_path: Path,
     layers: tuple[str, ...] = ALL_LAYERS,
+    pgf: bool = False,
 ) -> None:
     """Architecture diagram (top) + per-experiment heatmap (bottom).
 
@@ -384,8 +402,309 @@ def plot_arch(
     cb2.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     cb2.ax.tick_params(labelsize=6)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    _save(fig, output_path, pgf)
+    plt.close(fig)
+
+
+# ── Full-layer line chart (includes input + logits) ──────────────────────────
+
+def plot_full_layers(
+    results: AllResults,
+    output_path: Path,
+    layers: tuple[str, ...] = ALL_LAYERS,
+    title: str = "Probe accuracy across full layer range: raw pixels → model output",
+    pgf: bool = False,
+    ax=None,
+) -> None:
+    """Line chart including the input (raw-pixel) and logits bookend layers."""
+    import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
+    from matplotlib.font_manager import FontProperties
+
+    layer_list = [l for l in layers if any(not np.isnan(_get_acc(results, e, l)) for e in results)]
+    layer_labels = [l.replace("conv_block_", "cb") for l in layer_list]
+    x = list(range(len(layer_list)))
+    bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
+
+    # Background shading for bookend zones
+    input_idx  = next((i for i, l in enumerate(layer_list) if l == "input"), None)
+    logits_idx = next((i for i, l in enumerate(layer_list) if l == "logits"), None)
+
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(11, 5))
+
+    if input_idx is not None:
+        ax.axvspan(-0.5, input_idx + 0.5, color="#f5e6cc", alpha=0.5, zorder=0)
+        ax.text(input_idx, 1.005, "raw\npixels", ha="center", va="bottom", fontsize=7, color="#8B6914")
+    if logits_idx is not None:
+        ax.axvspan(logits_idx - 0.5, len(layer_list) - 0.5, color="#d4edda", alpha=0.5, zorder=0)
+        ax.text(logits_idx, 1.005, "model\noutput", ha="center", va="bottom", fontsize=7, color="#2d6a4f")
+
+    legend_handles: list = []
+    for cat, exps in _CATEGORIES.items():
+        colors = _PALETTES[cat]
+        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
+        for i, exp in enumerate(exps):
+            if exp not in results:
+                continue
+            vals = [_get_acc(results, exp, l) for l in layer_list]
+            is_control = cat == "Controls"
+            color = colors[i % len(colors)]
+            ax.plot(x, vals, marker="o", markersize=3.5, linewidth=1.5,
+                    linestyle="--" if is_control else "-", color=color, alpha=0.85)
+            legend_handles.append(mlines.Line2D(
+                [], [], color=color, linestyle="--" if is_control else "-",
+                marker="o", markersize=3.5, label=_display(exp),
+            ))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(layer_labels, rotation=20, ha="right")
+    ax.set_ylabel("Test accuracy")
+    ax.set_xlabel("Layer")
+    ax.set_title(title)
+    ax.set_ylim(0.45, 1.08)
+    ax.axhline(0.5, color="black", linewidth=0.8, linestyle=":", alpha=0.5)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.grid(axis="y", alpha=0.3)
+
+    leg = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
+                    borderaxespad=0, frameon=True, fontsize=8, handlelength=2)
+    for text, handle in zip(leg.get_texts(), legend_handles):
+        text.set_fontproperties(bold_fp if handle.get_color() == "none" else normal_fp)
+        if handle.get_color() == "none":
+            text.set_color("#333333")
+
+    if _standalone:
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
+
+
+# ── Categories line chart + early-vs-final scatter ────────────────────────────
+
+def plot_categories(
+    results: AllResults,
+    output_path: Path,
+    layers: tuple[str, ...] = ALL_LAYERS,
+    pgf: bool = False,
+    axes=None,
+) -> None:
+    """Two-panel figure: (left) mean±std per distortion category vs layer;
+    (right) scatter of first-conv vs embedding probe accuracy per experiment."""
+    import matplotlib.pyplot as plt
+
+    body_layers = [l for l in layers
+                   if l not in ("input", "logits")
+                   and any(not np.isnan(_get_acc(results, e, l)) for e in results)]
+    layer_labels = [l.replace("conv_block_", "cb") for l in body_layers]
+    x = list(range(len(body_layers)))
+
+    # Identify the first body layer (earliest conv) and the embedding layer for scatter
+    first_layer = body_layers[0] if body_layers else None
+    embed_layer = "embedding" if "embedding" in body_layers else (body_layers[-1] if body_layers else None)
+
+    _standalone = axes is None
+    if _standalone:
+        fig, (ax_lines, ax_scatter) = plt.subplots(1, 2, figsize=(13, 5),
+                                                    gridspec_kw={"width_ratios": [2, 1]})
+    else:
+        ax_lines, ax_scatter = axes
+    ax_lines.axhline(0.5, color="grey", linewidth=0.8, linestyle=":", label="chance")
+
+    non_control_cats = {k: v for k, v in _CATEGORIES.items() if k != "Controls"}
+    for cat, exps in non_control_cats.items():
+        cat_exps = [e for e in exps if e in results]
+        if not cat_exps:
+            continue
+        color = _PALETTES[cat][0]
+        matrix = np.array([[_get_acc(results, e, l) for l in body_layers] for e in cat_exps])
+        mean = np.nanmean(matrix, axis=0)
+        std  = np.nanstd(matrix, axis=0)
+        ax_lines.plot(x, mean, marker="o", markersize=4, linewidth=2, color=color,
+                      label=f"{cat} (n={len(cat_exps)})")
+        ax_lines.fill_between(x, mean - std, mean + std, color=color, alpha=0.15)
+
+    # Controls as dashed lines
+    for i, exp in enumerate(_CATEGORIES.get("Controls", [])):
+        if exp not in results:
+            continue
+        vals = [_get_acc(results, exp, l) for l in body_layers]
+        ax_lines.plot(x, vals, linestyle="--", color="#aaa", linewidth=1,
+                      label=exp.replace("_", " "), alpha=0.7)
+
+    ax_lines.set_xticks(x)
+    ax_lines.set_xticklabels(layer_labels)
+    ax_lines.set_ylim(0.45, 1.05)
+    ax_lines.set_ylabel("Mean probe accuracy ± 1 std")
+    ax_lines.set_title("By distortion category")
+    ax_lines.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax_lines.legend(fontsize=8, loc="lower left")
+    ax_lines.grid(axis="y", alpha=0.3)
+
+    # Scatter: first layer vs embedding
+    if first_layer and embed_layer and first_layer != embed_layer:
+        ax_scatter.axline((0.5, 0.5), slope=1, color="grey", linewidth=0.8,
+                          linestyle="--", label="no forgetting")
+        all_exps = [e for e in results if not any(c in e for c in _CONTROL_SUFFIXES)]
+        cat_lookup = {exp: cat for cat, exps in _CATEGORIES.items() for exp in exps}
+        for exp in all_exps:
+            x_val = _get_acc(results, exp, first_layer)
+            y_val = _get_acc(results, exp, embed_layer)
+            if np.isnan(x_val) or np.isnan(y_val):
+                continue
+            cat = cat_lookup.get(exp, "Font style")
+            color = _PALETTES.get(cat, ["#888"])[0]
+            ax_scatter.scatter(x_val, y_val, color=color, s=55, zorder=3)
+            ax_scatter.annotate(_display(exp), (x_val, y_val),
+                                textcoords="offset points", xytext=(4, 3), fontsize=7)
+        first_label = first_layer.replace("conv_block_", "cb")
+        ax_scatter.set_xlabel(f"{first_label} probe accuracy")
+        ax_scatter.set_ylabel(f"Embedding probe accuracy")
+        ax_scatter.set_title("Early encoding vs final encoding")
+        ax_scatter.legend(fontsize=8, loc="upper left")
+        ax_scatter.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+        ax_scatter.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+        ax_scatter.grid(alpha=0.25)
+
+    if _standalone:
+        ax_lines.figure.tight_layout()
+        _save(ax_lines.figure, output_path, pgf)
+        plt.close(ax_lines.figure)
+
+
+# ── Forgetting bar chart ──────────────────────────────────────────────────────
+
+def plot_forgetting(
+    results: AllResults,
+    output_path: Path,
+    layers: tuple[str, ...] = ALL_LAYERS,
+    pgf: bool = False,
+    ax=None,
+) -> None:
+    """Stacked bar chart: peak probe accuracy and drop-to-embedding, sorted by drop."""
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+
+    body_layers = [l for l in layers if l not in ("input", "logits")
+                   and any(not np.isnan(_get_acc(results, e, l)) for e in results)]
+    embed_layer = "embedding" if "embedding" in body_layers else (body_layers[-1] if body_layers else None)
+    if not embed_layer:
+        return
+
+    exps = [e for e in results if not any(c in e for c in _CONTROL_SUFFIXES)]
+    data = []
+    for exp in exps:
+        peak = max((_get_acc(results, exp, l) for l in body_layers), default=float("nan"))
+        embed = _get_acc(results, exp, embed_layer)
+        if not np.isnan(peak) and not np.isnan(embed):
+            data.append((exp, peak, embed, peak - embed))
+
+    data.sort(key=lambda r: r[3], reverse=True)  # sort by drop descending
+
+    names   = [_display(r[0]) for r in data]
+    peaks   = [r[1] for r in data]
+    embeds  = [r[2] for r in data]
+    drops   = [r[3] for r in data]
+
+    colors = cm.tab20.colors
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(max(8, 1.3 * len(data)), 6))
+    x = np.arange(len(data))
+
+    for i, (emb, drop, color) in enumerate(zip(embeds, drops, colors)):
+        ax.bar(i, emb, color=(*color[:3], 0.40))
+        ax.bar(i, drop, bottom=emb, color=color)
+        sign = "-" if drop >= 0 else "+"
+        ax.text(i, emb + drop + 0.005, f"{sign}{abs(drop):.1%}",
+                ha="center", va="bottom", fontsize=8,
+                color="#cc4400" if drop > 0.05 else "#007700")
+
+    ax.axhline(0.5, color="grey", linewidth=1, linestyle="--")
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=15, ha="right")
+    ax.set_ylabel("Probe accuracy")
+    ax.set_ylim(0.45, 1.12)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title("Strategic forgetting: peak accuracy vs embedding (sorted by drop)")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(facecolor=(0.5, 0.5, 0.5, 0.4), label="Embedding accuracy"),
+                        Patch(facecolor=(0.5, 0.5, 0.5, 1.0), label="Drop to embedding")],
+              fontsize=9, loc="upper right")
+    if _standalone:
+        ax.figure.tight_layout()
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
+
+
+# ── Linear vs MLP comparison heatmap ─────────────────────────────────────────
+
+def plot_linear_vs_mlp(
+    linear_results: AllResults,
+    mlp_results: AllResults,
+    output_path: Path,
+    layers: tuple[str, ...] = ALL_LAYERS,
+    pgf: bool = False,
+) -> None:
+    """Side-by-side heatmap comparing linear (logistic regression) and MLP probes."""
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as mcolors
+
+    def sort_key(name: str) -> tuple[int, str]:
+        return (1, name) if any(s in name for s in _CONTROL_SUFFIXES) else (0, name)
+
+    # Use experiments present in both; layers present in either
+    all_exps = sorted(set(linear_results) | set(mlp_results), key=sort_key)
+    layer_list = [l for l in layers if l not in ("input", "logits")
+                  and (any(l in linear_results.get(e, {}) for e in all_exps)
+                       or any(l in mlp_results.get(e, {}) for e in all_exps))]
+    layer_labels = [l.replace("conv_block_", "cb") for l in layer_list]
+
+    cmap = plt.cm.Blues
+    norm = mcolors.Normalize(vmin=0.5, vmax=1.0)
+    n_exp, n_layers = len(all_exps), len(layer_list)
+    fig, axes = plt.subplots(1, 2, figsize=(max(10, 1.5 * n_layers), max(4, 0.5 * n_exp + 2)),
+                              sharey=True)
+
+    for ax, res, panel_title in zip(axes,
+                                     [linear_results, mlp_results],
+                                     ["Linear (logistic regression)", "MLP (64×32 hidden)"]):
+        matrix = np.full((n_exp, n_layers), np.nan)
+        for i, exp in enumerate(all_exps):
+            for j, layer in enumerate(layer_list):
+                if layer in res.get(exp, {}):
+                    matrix[i, j] = res[exp][layer].test_acc
+        ax.imshow(matrix, aspect="auto", cmap=cmap, norm=norm)
+        for i in range(n_exp):
+            for j in range(n_layers):
+                val = matrix[i, j]
+                if not np.isnan(val):
+                    # Show delta vs linear in MLP panel
+                    if ax is axes[1]:
+                        lin_val = linear_results.get(all_exps[i], {}).get(layer_list[j])
+                        lin_val = lin_val.test_acc if lin_val and hasattr(lin_val, "test_acc") else float("nan")
+                        delta = val - lin_val
+                        extra = f"\n{delta:+.0%}" if not np.isnan(delta) and abs(delta) > 0.005 else ""
+                        ax.text(j, i, f"{val:.0%}{extra}", ha="center", va="center",
+                                fontsize=6.5, color="white" if val > 0.80 else "black")
+                    else:
+                        ax.text(j, i, f"{val:.0%}", ha="center", va="center",
+                                fontsize=7, color="white" if val > 0.80 else "black")
+        ax.set_xticks(range(n_layers))
+        ax.set_xticklabels(layer_labels, rotation=30, ha="right", fontsize=8)
+        ax.set_title(panel_title, fontsize=10)
+        if ax is axes[0]:
+            ax.set_yticks(range(n_exp))
+            ax.set_yticklabels(all_exps, fontsize=8)
+        n_non = sum(1 for e in all_exps if not any(c in e for c in _CONTROL_SUFFIXES))
+        if 0 < n_non < n_exp:
+            ax.axhline(n_non - 0.5, color="black", linewidth=1.5, linestyle="--")
+
+    fig.suptitle("Linear probe vs  MLP probe  (test accuracy)", fontsize=11, y=1.01)
+    axes[1].text(0.5, -0.12, "Small italic numbers on MLP panel = delta vs linear",
+                 ha="center", transform=axes[1].transAxes, fontsize=7, color="#555")
+    fig.tight_layout()
+    _save(fig, output_path, pgf)
     plt.close(fig)
 
 
@@ -396,6 +715,7 @@ def plot_pca(
     results: AllResults,
     output_path: Path,
     n_samples: int = 600,
+    pgf: bool = False,
 ) -> None:
     """3×3 PCA scatter grid showing batch A vs B cluster separation.
 
@@ -478,6 +798,5 @@ def plot_pca(
                  exp_label, ha="left", va="center", fontsize=9, fontweight="bold", rotation=90)
 
     plt.tight_layout(rect=[0.03, 0, 1, 0.95])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    _save(fig, output_path, pgf)
     plt.close(fig)

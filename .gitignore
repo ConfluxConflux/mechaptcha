@@ -1,5 +1,6 @@
 *.pyc
 
+logs/
 /runs/
 /wandb/
 /data/
@@ -9,4 +10,4 @@ __pycache__/
 .DS_Store
 .claude/
 
-/probe_results/
+/probe_results/sweeps*/
