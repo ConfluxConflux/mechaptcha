@@ -72,6 +72,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--max-iter", type=int, default=1000, dest="max_iter")
     p.add_argument("--mlp-hidden-sizes", type=int, nargs="+", default=[64, 32], dest="mlp_hidden_sizes")
     p.add_argument("--no-plot", action="store_true", dest="no_plot")
+    p.add_argument("--pgf", action="store_true",
+                   help="Also save every chart as a same-named .pgf file for LaTeX inclusion.")
     return p.parse_args()
 
 
@@ -150,8 +152,8 @@ def main() -> None:
     print(f"\nResults saved to {results_path}")
 
     if not args.no_plot:
-        plot_heatmap(all_results, args.output / "heatmap.png", layers=config.layers)
-        plot_lines(all_results, args.output / "chart_lines.png", layers=config.layers)
+        plot_heatmap(all_results, args.output / "heatmap.png", layers=config.layers, pgf=args.pgf)
+        plot_lines(all_results, args.output / "chart_lines.png", layers=config.layers, pgf=args.pgf)
         print(f"Charts saved to {args.output}")
 
 

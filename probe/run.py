@@ -38,7 +38,7 @@ if str(REPO_ROOT) not in sys.path:
 from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig, get_model_layers
 from probe.extract import extract_experiment, extract_hf_experiments, load_model
 from probe.fit import probe_experiment
-from probe.plot import plot_arch, plot_heatmap, plot_lines, plot_pca
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca
 from probe.results import format_table, save_results
 
 
@@ -92,6 +92,11 @@ def _parse_args() -> argparse.Namespace:
                         "or 'logits' to probe the model output.")
     p.add_argument("--no-plot", action="store_true", dest="no_plot",
                    help="Skip generating the heatmap PNG")
+    p.add_argument("--mlp-results", type=Path, default=None, dest="mlp_results",
+                   help="Path to a results.json from an MLP probe run, used to generate "
+                        "the linear-vs-mlp comparison chart alongside the linear results.")
+    p.add_argument("--pgf", action="store_true",
+                   help="Also save every chart as a same-named .pgf file for LaTeX inclusion.")
 
     return p.parse_args()
 
@@ -199,23 +204,43 @@ def main() -> None:
 
     if not args.no_plot:
         plot_path = args.output / "heatmap.png"
-        plot_heatmap(all_results, plot_path, layers=config.layers)
+        pgf = args.pgf
+        plot_heatmap(all_results, plot_path, layers=config.layers, pgf=pgf)
         print(f"Heatmap saved to {plot_path}")
 
         lines_path = args.output / "chart_lines.png"
-        plot_lines(all_results, lines_path, layers=config.layers)
+        plot_lines(all_results, lines_path, layers=config.layers, pgf=pgf)
         print(f"Line chart saved to {lines_path}")
 
         arch_path = args.output / "chart_arch.png"
-        plot_arch(all_results, arch_path, layers=config.layers)
+        plot_arch(all_results, arch_path, layers=config.layers, pgf=pgf)
         print(f"Architecture diagram saved to {arch_path}")
 
         pca_path = args.output / "chart_pca.png"
         try:
-            plot_pca(args.activations, all_results, pca_path)
+            plot_pca(args.activations, all_results, pca_path, pgf=pgf)
             print(f"PCA scatter saved to {pca_path}")
         except ImportError:
             print("Skipping PCA chart (scikit-learn not available)")
+
+        full_layers_path = args.output / "chart_full_layers.png"
+        plot_full_layers(all_results, full_layers_path, layers=config.layers, pgf=pgf)
+        print(f"Full-layer chart saved to {full_layers_path}")
+
+        categories_path = args.output / "chart_categories.png"
+        plot_categories(all_results, categories_path, layers=config.layers, pgf=pgf)
+        print(f"Categories chart saved to {categories_path}")
+
+        forgetting_path = args.output / "chart_forgetting.png"
+        plot_forgetting(all_results, forgetting_path, layers=config.layers, pgf=pgf)
+        print(f"Forgetting chart saved to {forgetting_path}")
+
+        if args.mlp_results and args.mlp_results.exists():
+            from probe.results import load_results as _load
+            mlp_results = _load(args.mlp_results)
+            linear_vs_mlp_path = args.output / "chart_linear_vs_mlp.png"
+            plot_linear_vs_mlp(all_results, mlp_results, linear_vs_mlp_path, layers=config.layers, pgf=pgf)
+            print(f"Linear vs MLP chart saved to {linear_vs_mlp_path}")
 
 
 if __name__ == "__main__":
