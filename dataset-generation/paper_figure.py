@@ -173,13 +173,12 @@ def make_paper_figure():
         sorted_active = sorted(active)
         if not sorted_active:
             perturb_str = "none"
-        elif len(sorted_active) <= _MAX_PERTURBS_SHOWN:
+        elif len(sorted_active) <= 2:
             perturb_str = ", ".join(sorted_active)
         else:
-            perturb_str = (", ".join(sorted_active[:_MAX_PERTURBS_SHOWN])
-                           + f", +{len(sorted_active) - _MAX_PERTURBS_SHOWN}")
+            perturb_str = ", ".join(sorted_active[:2]) + f", +{len(sorted_active) - 2}"
         ax.set_title(
-            f'text: "{text}" | perturbations: {perturb_str}',
+            f'"{text}" | {perturb_str}',
             fontsize=7, pad=2, loc="left",
         )
 
