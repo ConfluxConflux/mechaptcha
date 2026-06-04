@@ -710,6 +710,74 @@ def plot_linear_vs_mlp(
     plt.close(fig)
 
 
+# ── Sparsity chart ───────────────────────────────────────────────────────────
+
+def plot_sparsity(
+    results: AllResults,
+    layers: tuple[str, ...],
+    output_path: Path,
+    title: str = "Sparse probe: fraction of non-zero weights per layer",
+    pgf: bool = False,
+) -> None:
+    """Line chart of probe weight sparsity (fraction non-zero) vs layer.
+
+    Only meaningful for sparse_logistic results, where most weights are exactly
+    zero. Lower = sparser = fewer features needed to decode the distortion.
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
+    from matplotlib.font_manager import FontProperties
+
+    body_layers = [l for l in layers if l not in ("input", "logits")
+                   and any(l in results.get(e, {}) for e in results)]
+    layer_labels = [l.replace("conv_block_", "cb").replace("block_", "blk ") for l in body_layers]
+    x = list(range(len(body_layers)))
+    bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    legend_handles: list = []
+
+    for cat, exps in _CATEGORIES.items():
+        colors = _PALETTES[cat]
+        is_control = cat == "Controls"
+        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
+        for i, exp in enumerate(exps):
+            if exp not in results:
+                continue
+            vals = []
+            for layer in body_layers:
+                r = results[exp].get(layer)
+                vals.append(r.sparsity if r and r.sparsity is not None else float("nan"))
+            color = colors[i % len(colors)]
+            ax.plot(x, vals, marker="o", markersize=4, linewidth=1.5,
+                    linestyle="--" if is_control else "-", color=color, alpha=0.85)
+            legend_handles.append(mlines.Line2D(
+                [], [], color=color, linestyle="--" if is_control else "-",
+                marker="o", markersize=4, label=_display(exp),
+            ))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(layer_labels)
+    ax.set_ylabel("Fraction of non-zero weights")
+    ax.set_xlabel("Layer")
+    ax.set_title(title)
+    ax.set_ylim(-0.02, 1.02)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.grid(axis="y", alpha=0.3)
+    ax.axhline(0, color="black", linewidth=0.8, linestyle=":", alpha=0.4)
+
+    leg = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
+                    borderaxespad=0, frameon=True, fontsize=8, handlelength=2)
+    for text, handle in zip(leg.get_texts(), legend_handles):
+        fp = bold_fp if handle.get_color() == "none" else normal_fp
+        text.set_fontproperties(fp)
+        if handle.get_color() == "none":
+            text.set_color("#333333")
+
+    _save(fig, output_path, pgf)
+    plt.close(fig)
+
+
 # ── PCA scatter ───────────────────────────────────────────────────────────────
 
 def plot_pca(

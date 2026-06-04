@@ -20,7 +20,7 @@ ALL_LAYERS = ("input",) + HOOK_LAYERS + ("logits",)
 CONV_REDUCTIONS = ("global_avg_pool", "flatten")
 
 # Supported sklearn classifiers
-CLASSIFIERS = ("logistic_regression", "linear_svc", "mlp")
+CLASSIFIERS = ("logistic_regression", "linear_svc", "mlp", "sparse_logistic")
 
 
 @dataclass(frozen=True)

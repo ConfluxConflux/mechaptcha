@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from probe.config import ALL_LAYERS
-from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_task_accuracy
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_sparsity, plot_task_accuracy
 from probe.results import AllResults, load_results
 
 CHARTS_DIR = Path(__file__).resolve().parent
@@ -50,18 +50,20 @@ CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("CLIP-B",             REPO_ROOT / "dino_results/clip-vit-base/results.json",                  REPO_ROOT / "dino_results/clip-vit-base/activations"),
 ]
 
-MLP_RESULTS: dict[str, Path] = {
-    "CNN":              REPO_ROOT / "probe_results/full_mlp/results.json",
-    "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/mlp/results.json",
-    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/mlp/results.json",
-    "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/mlp/results.json",
-    "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/mlp/results.json",
-    "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/mlp/results.json",
-    "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/mlp/results.json",
-    "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/mlp/results.json",
-    "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/mlp/results.json",
-    "CLIP-B":           REPO_ROOT / "dino_results/clip-vit-base/mlp/results.json",
-}
+def _probe_results(subdir: str) -> dict[str, Path]:
+    """Build a label->Path map for a probe variant (mlp, sparse_logistic, etc.)."""
+    return {
+        "CNN":           REPO_ROOT / f"probe_results/full_{subdir}/results.json",
+        "DINOv2-S-lora": REPO_ROOT / f"dino_results/dinov2-small-lora/{subdir}/results.json",
+        "DINOv2-S-frozen":REPO_ROOT / f"dino_results/dinov2-small-frozen/{subdir}/results.json",
+        "DINOv2-B-lora": REPO_ROOT / f"dino_results/dinov2-base-lora/{subdir}/results.json",
+        "DINOv2-L-lora": REPO_ROOT / f"dino_results/dinov2-large-lora/{subdir}/results.json",
+        "CLIP-B-lora":   REPO_ROOT / f"dino_results/clip-vit-base-lora/{subdir}/results.json",
+        "ViT-B-lora":    REPO_ROOT / f"dino_results/vit-base-supervised-lora/{subdir}/results.json",
+    }
+
+MLP_RESULTS:    dict[str, Path] = _probe_results("mlp")
+SPARSE_RESULTS: dict[str, Path] = _probe_results("sparse_logistic")
 
 TRAINING_METRICS: dict[str, Path | dict] = {
     "CNN": {
@@ -541,6 +543,14 @@ def main() -> None:
             mlp_res = load_results(mlp_path)
             plot_linear_vs_mlp(res, mlp_res, out_dir / "linear_vs_mlp.png", layers=layers, pgf=args.pgf)
             print(f"  linear_vs_mlp.png")
+
+        sparse_path = SPARSE_RESULTS.get(label)
+        if sparse_path and sparse_path.exists():
+            sparse_res = load_results(sparse_path)
+            plot_linear_vs_mlp(res, sparse_res, out_dir / "linear_vs_sparse.png", layers=layers, pgf=args.pgf)
+            print(f"  linear_vs_sparse.png")
+            plot_sparsity(sparse_res, layers, out_dir / "sparsity.png", title=f"Probe sparsity — {label}", pgf=args.pgf)
+            print(f"  sparsity.png")
 
         acc_path = TRANSCRIPTION_ACCURACY.get(label)
         if acc_path and acc_path.exists():

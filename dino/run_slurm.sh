@@ -81,22 +81,29 @@ uv run python -m dino.run "${FILTERED_ARGS[@]}" \
   --output "$SCRATCH_OUTPUT" \
   --activations "$ACTIVATIONS"
 
-# Run MLP probes on the same (cached) activations.
-MLP_SCRATCH="${SCRATCH_OUTPUT}/mlp"
-echo "Running MLP probes -> ${MLP_SCRATCH}"
-uv run python -m dino.run --probe-only --classifier mlp \
-  --activations "$ACTIVATIONS" \
-  --output "$MLP_SCRATCH" \
-  --no-plot
-echo "MLP probes done."
+# Run MLP and sparse probes on the same (cached) activations.
+for CLF in mlp sparse_logistic; do
+  CLF_SCRATCH="${SCRATCH_OUTPUT}/${CLF}"
+  echo "Running ${CLF} probes -> ${CLF_SCRATCH}"
+  uv run python -m dino.run --probe-only --classifier "$CLF" \
+    --activations "$ACTIVATIONS" \
+    --output "$CLF_SCRATCH" \
+    --no-plot
+  echo "${CLF} probes done."
+done
 
 # Copy small result files to the persistent output dir.
 if [[ -n "$PERSISTENT_OUTPUT" ]]; then
-  mkdir -p "${PERSISTENT_OUTPUT}/mlp"
   for f in results.json transcription_accuracy.json; do
     [[ -f "${SCRATCH_OUTPUT}/${f}" ]] && cp "${SCRATCH_OUTPUT}/${f}" "${PERSISTENT_OUTPUT}/${f}"
   done
-  [[ -f "${MLP_SCRATCH}/results.json" ]] && cp "${MLP_SCRATCH}/results.json" "${PERSISTENT_OUTPUT}/mlp/results.json"
+  for CLF in mlp sparse_logistic; do
+    CLF_SCRATCH="${SCRATCH_OUTPUT}/${CLF}"
+    if [[ -f "${CLF_SCRATCH}/results.json" ]]; then
+      mkdir -p "${PERSISTENT_OUTPUT}/${CLF}"
+      cp "${CLF_SCRATCH}/results.json" "${PERSISTENT_OUTPUT}/${CLF}/results.json"
+    fi
+  done
   echo "Persisted results -> ${PERSISTENT_OUTPUT}/"
 fi
 
