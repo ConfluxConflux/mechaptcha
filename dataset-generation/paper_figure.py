@@ -131,8 +131,8 @@ def make_paper_figure():
         hspace=HSPACE,
     )
     gs_smp = gridspec.GridSpecFromSubplotSpec(
-        n_rrows, n_rcols, subplot_spec=gs[1],
-        hspace=HSPACE, wspace=WSPACE,
+        n_rrows, 1, subplot_spec=gs[1],
+        hspace=HSPACE,
     )
 
     # ── Left panel: perturbation catalogue (single column) ────────────────────
