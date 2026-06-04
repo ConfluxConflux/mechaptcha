@@ -106,8 +106,8 @@ def make_paper_figure():
     fonts = load_fonts(FONT_DIR)
 
     n_cat = len(_ORDER)   # 14 rows, single column
-    n_rcols = 3
-    n_rrows = 7           # 21 random samples
+    n_rcols = 1
+    n_rrows = 14          # one row per sample, matches left column height
 
     # hspace provides the gap above each image row for the set_title label
     HSPACE = 0.35
