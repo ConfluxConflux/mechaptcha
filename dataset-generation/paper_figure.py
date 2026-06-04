@@ -135,15 +135,9 @@ def make_paper_figure():
         hspace=HSPACE, wspace=WSPACE,
     )
 
-    # ── Left panel: perturbation catalogue ────────────────────────────────────
-    for idx, key in enumerate(_ORDER):
-        row, col = divmod(idx, n_cat_cols)
-        ax = fig.add_subplot(gs_cat[row, col])
-
-        if key is None:          # empty cell
-            ax.axis("off")
-            continue
-
+    # ── Left panel: perturbation catalogue (single column) ────────────────────
+    for i, key in enumerate(_ORDER):
+        ax = fig.add_subplot(gs_cat[i])
         ax.set_facecolor(_BG.get(key, "white"))
         ax.imshow(_render_single(key, fonts), cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.set_xticks([])
@@ -152,10 +146,10 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
-        # Perturbation name above the image — fits the 1.1"-wide cell cleanly
+        # Full qa_stacked-style label — fits easily in the ~3.5"-wide single-column cell
         label = _LABEL[key]
         ax.set_title(
-            label,
+            f'text: "{DEMO_WORD}" | perturbation: {label}',
             fontsize=7, pad=2, loc="left",
             fontstyle="italic" if key == "clean" else "normal",
         )
