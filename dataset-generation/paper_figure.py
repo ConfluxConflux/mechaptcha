@@ -107,7 +107,7 @@ def make_paper_figure():
 
     n_cat = len(_ORDER)   # 14 rows, single column
     n_rcols = 3
-    n_rrows = 5           # 15 random samples
+    n_rrows = 7           # 21 random samples
 
     # hspace provides the gap above each image row for the set_title label
     HSPACE = 0.35
