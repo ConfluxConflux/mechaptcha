@@ -179,13 +179,14 @@ def make_paper_figure():
         )
 
     # ── Panel headers ──────────────────────────────────────────────────────────
-    fig.text(0.255, 0.945, "Individual perturbations",
+    # Left panel spans ~[0.01, 0.555]; right spans ~[0.585, 0.99]
+    fig.text(0.283, 0.965, "Individual perturbations",
              ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
-    fig.text(0.745, 0.945, "Dataset samples",
+    fig.text(0.790, 0.965, "Dataset samples",
              ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
 
     # Thin vertical separator
-    fig.add_artist(plt.Line2D([0.505, 0.505], [0.01, 0.92],
+    fig.add_artist(plt.Line2D([0.560, 0.560], [0.01, 0.94],
                                transform=fig.transFigure,
                                color="#ccc", linewidth=0.6, zorder=10))
 
