@@ -44,7 +44,7 @@ def _parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     # Backbone / adapter
-    p.add_argument("--backbone", choices=("dinov2", "clip"), default="dinov2",
+    p.add_argument("--backbone", choices=("dinov2", "clip", "timm"), default="dinov2",
                    help="Pretrained ViT family: dinov2 (self-supervised) or clip (language-supervised).")
     p.add_argument("--model-name", default="facebook/dinov2-small", dest="model_name",
                    help="HF backbone id. dinov2: facebook/dinov2-{small,base,large}; "
@@ -62,6 +62,9 @@ def _parse_args() -> argparse.Namespace:
                         "Empty = backbone default (dinov2: query/value, clip: q_proj/v_proj).")
     p.add_argument("--head-pooling", choices=("cls", "mean"), default="cls", dest="head_pooling",
                    help="Which token the transcription heads read: cls summary or mean of patches.")
+    p.add_argument("--freeze-backbone", action="store_true", dest="freeze_backbone",
+                   help="Freeze the entire backbone (no LoRA); only the transcription heads are "
+                        "trained. Useful as a baseline to measure how much LoRA adaptation matters.")
 
     # Data
     p.add_argument("--dataset-name", default="jacobcohen/mechaptcha", dest="dataset_name",
@@ -130,8 +133,14 @@ def main() -> None:
         lora_target_modules=tuple(args.lora_target_modules),
         head_pooling=args.head_pooling,
     )
-    print(f"Loading backbone {dino_config.model_name} + LoRA(r={dino_config.lora_r})")
+    if args.freeze_backbone:
+        print(f"Loading backbone {dino_config.model_name} (frozen — heads only)")
+    else:
+        print(f"Loading backbone {dino_config.model_name} + LoRA(r={dino_config.lora_r})")
     model = DinoCaptchaModel(dino_config).to(device)
+    if args.freeze_backbone:
+        for p in model.backbone.parameters():
+            p.requires_grad_(False)
     n_train = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Trainable params: {n_train:,} ({model.num_blocks} blocks)")
 

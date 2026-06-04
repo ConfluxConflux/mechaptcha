@@ -98,6 +98,7 @@ def plot_heatmap(
     layers: tuple[str, ...] = ALL_LAYERS,
     title: str = "Linear probe accuracy (test set)",
     pgf: bool = False,
+    ax=None,
 ) -> None:
     """Heatmap of test accuracy for each experiment × layer."""
     import matplotlib.pyplot as plt
@@ -117,7 +118,10 @@ def plot_heatmap(
 
     cmap = plt.cm.Blues
     norm = mcolors.Normalize(vmin=0.5, vmax=1.0)
-    fig, ax = plt.subplots(figsize=(max(6, 1.6 * n_layers), max(4, 0.5 * n_exp + 1.5)))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(max(6, 1.6 * n_layers), max(4, 0.5 * n_exp + 1.5)))
+    fig = ax.figure
     im = ax.imshow(matrix, aspect="auto", cmap=cmap, norm=norm)
 
     for i in range(n_exp):
@@ -142,9 +146,10 @@ def plot_heatmap(
     cbar.ax.axhline(0.5, color="red", linewidth=1, linestyle="--")
 
     ax.set_title(title, fontsize=10, pad=10)
-    fig.tight_layout()
-    _save(fig, output_path, pgf)
-    plt.close(fig)
+    if _standalone:
+        fig.tight_layout()
+        _save(fig, output_path, pgf)
+        plt.close(fig)
 
 
 # ── Line chart ────────────────────────────────────────────────────────────────
@@ -155,6 +160,7 @@ def plot_lines(
     layers: tuple[str, ...] = ALL_LAYERS,
     title: str = "Linear probe accuracy by layer",
     pgf: bool = False,
+    ax=None,
 ) -> None:
     """Line chart of test accuracy vs. layer, grouped legend on the right."""
     import matplotlib.pyplot as plt
@@ -171,7 +177,9 @@ def plot_lines(
     x = list(range(len(layer_list)))
     bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(9, 5))
     legend_handles: list = []
 
     for cat, exps in _CATEGORIES.items():
@@ -209,8 +217,9 @@ def plot_lines(
         else:
             text.set_fontproperties(normal_fp)
 
-    _save(fig, output_path, pgf)
-    plt.close(fig)
+    if _standalone:
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
 
 
 # ── Architecture diagram ──────────────────────────────────────────────────────
@@ -405,6 +414,7 @@ def plot_full_layers(
     layers: tuple[str, ...] = ALL_LAYERS,
     title: str = "Probe accuracy across full layer range: raw pixels → model output",
     pgf: bool = False,
+    ax=None,
 ) -> None:
     """Line chart including the input (raw-pixel) and logits bookend layers."""
     import matplotlib.pyplot as plt
@@ -420,7 +430,9 @@ def plot_full_layers(
     input_idx  = next((i for i, l in enumerate(layer_list) if l == "input"), None)
     logits_idx = next((i for i, l in enumerate(layer_list) if l == "logits"), None)
 
-    fig, ax = plt.subplots(figsize=(11, 5))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(11, 5))
 
     if input_idx is not None:
         ax.axvspan(-0.5, input_idx + 0.5, color="#f5e6cc", alpha=0.5, zorder=0)
@@ -463,8 +475,9 @@ def plot_full_layers(
         if handle.get_color() == "none":
             text.set_color("#333333")
 
-    _save(fig, output_path, pgf)
-    plt.close(fig)
+    if _standalone:
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
 
 
 # ── Categories line chart + early-vs-final scatter ────────────────────────────
@@ -474,6 +487,7 @@ def plot_categories(
     output_path: Path,
     layers: tuple[str, ...] = ALL_LAYERS,
     pgf: bool = False,
+    axes=None,
 ) -> None:
     """Two-panel figure: (left) mean±std per distortion category vs layer;
     (right) scatter of first-conv vs embedding probe accuracy per experiment."""
@@ -489,8 +503,12 @@ def plot_categories(
     first_layer = body_layers[0] if body_layers else None
     embed_layer = "embedding" if "embedding" in body_layers else (body_layers[-1] if body_layers else None)
 
-    fig, (ax_lines, ax_scatter) = plt.subplots(1, 2, figsize=(13, 5),
-                                                gridspec_kw={"width_ratios": [2, 1]})
+    _standalone = axes is None
+    if _standalone:
+        fig, (ax_lines, ax_scatter) = plt.subplots(1, 2, figsize=(13, 5),
+                                                    gridspec_kw={"width_ratios": [2, 1]})
+    else:
+        ax_lines, ax_scatter = axes
     ax_lines.axhline(0.5, color="grey", linewidth=0.8, linestyle=":", label="chance")
 
     non_control_cats = {k: v for k, v in _CATEGORIES.items() if k != "Controls"}
@@ -548,9 +566,10 @@ def plot_categories(
         ax_scatter.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
         ax_scatter.grid(alpha=0.25)
 
-    fig.tight_layout()
-    _save(fig, output_path, pgf)
-    plt.close(fig)
+    if _standalone:
+        ax_lines.figure.tight_layout()
+        _save(ax_lines.figure, output_path, pgf)
+        plt.close(ax_lines.figure)
 
 
 # ── Forgetting bar chart ──────────────────────────────────────────────────────
@@ -560,6 +579,7 @@ def plot_forgetting(
     output_path: Path,
     layers: tuple[str, ...] = ALL_LAYERS,
     pgf: bool = False,
+    ax=None,
 ) -> None:
     """Stacked bar chart: peak probe accuracy and drop-to-embedding, sorted by drop."""
     import matplotlib.pyplot as plt
@@ -587,7 +607,9 @@ def plot_forgetting(
     drops   = [r[3] for r in data]
 
     colors = cm.tab20.colors
-    fig, ax = plt.subplots(figsize=(max(8, 1.3 * len(data)), 6))
+    _standalone = ax is None
+    if _standalone:
+        fig, ax = plt.subplots(figsize=(max(8, 1.3 * len(data)), 6))
     x = np.arange(len(data))
 
     for i, (emb, drop, color) in enumerate(zip(embeds, drops, colors)):
@@ -609,9 +631,10 @@ def plot_forgetting(
     ax.legend(handles=[Patch(facecolor=(0.5, 0.5, 0.5, 0.4), label="Embedding accuracy"),
                         Patch(facecolor=(0.5, 0.5, 0.5, 1.0), label="Drop to embedding")],
               fontsize=9, loc="upper right")
-    fig.tight_layout()
-    _save(fig, output_path, pgf)
-    plt.close(fig)
+    if _standalone:
+        ax.figure.tight_layout()
+        _save(ax.figure, output_path, pgf)
+        plt.close(ax.figure)
 
 
 # ── Linear vs MLP comparison heatmap ─────────────────────────────────────────

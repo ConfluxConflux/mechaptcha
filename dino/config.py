@@ -25,12 +25,14 @@ TOKEN_REDUCTIONS = ("mean", "cls")
 # input normalisation (handled in dino/model.py).
 #   "dinov2" -> self-supervised (facebook/dinov2-*), LoRA on query/value
 #   "clip"   -> language-supervised vision tower (openai/clip-vit-*), LoRA on q_proj/v_proj
-BACKBONES = ("dinov2", "clip")
+BACKBONES = ("dinov2", "clip", "timm")
 
 # Default LoRA attention targets per backbone (matched by module-name suffix).
 _DEFAULT_LORA_TARGETS = {
     "dinov2": ("query", "value"),
     "clip": ("q_proj", "v_proj"),
+    # timm ViTs use a single fused QKV linear; "qkv" matches blocks.N.attn.qkv.
+    "timm": ("qkv",),
 }
 
 
@@ -42,11 +44,12 @@ class DinoConfig:
     backbone: str = "dinov2"
 
     # HF model id for the backbone. Smaller = faster probing across depth.
-    #   facebook/dinov2-small  -> ViT-S/14, hidden 384, 12 blocks
-    #   facebook/dinov2-base   -> ViT-B/14, hidden 768, 12 blocks
-    #   facebook/dinov2-large  -> ViT-L/14, hidden 1024, 24 blocks
-    #   openai/clip-vit-base-patch16  -> CLIP ViT-B/16, hidden 768, 12 blocks
-    #   openai/clip-vit-large-patch14 -> CLIP ViT-L/14, hidden 1024, 24 blocks
+    #   facebook/dinov2-small        -> ViT-S/14, hidden 384,  12 blocks
+    #   facebook/dinov2-base         -> ViT-B/14, hidden 768,  12 blocks
+    #   facebook/dinov2-large        -> ViT-L/14, hidden 1024, 24 blocks
+    #   openai/clip-vit-base-patch16 -> CLIP ViT-B/16, hidden 768,  12 blocks
+    #   openai/clip-vit-large-patch14-> CLIP ViT-L/14, hidden 1024, 24 blocks
+    #   vit_base_patch16_224         -> timm supervised ViT-B/16, hidden 768, 12 blocks
     model_name: str = "facebook/dinov2-small"
 
     # CAPTCHA transcription target (must match the dataset labels).
@@ -91,8 +94,7 @@ class DinoConfig:
             raise ValueError(f"head_pooling must be one of {TOKEN_REDUCTIONS}, got {self.head_pooling!r}")
         if self.token_reduction not in TOKEN_REDUCTIONS:
             raise ValueError(f"token_reduction must be one of {TOKEN_REDUCTIONS}, got {self.token_reduction!r}")
-        # image_size must be a multiple of the backbone's patch size; checked against
-        # the actual loaded config in dino/model.py (patch size varies: 14, 16, 32).
+        # image_size is validated against the backbone's actual patch size in model.py.
 
 
 def block_layer_names(num_blocks: int) -> tuple[str, ...]:

@@ -24,7 +24,8 @@ from dino.config import DinoConfig
 # 3 channels). DINOv2 uses ImageNet stats; CLIP uses its own.
 _NORM_STATS = {
     "dinov2": ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-    "clip": ((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    "clip":   ((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    "timm":   ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),  # standard ImageNet stats
 }
 
 
@@ -40,7 +41,12 @@ def build_transform(config: DinoConfig) -> transforms.Compose:
 
 
 def _load_backbone(config: DinoConfig, pretrained: bool):
-    """Load the pretrained ViT vision tower for the configured backbone family."""
+    """Load the pretrained ViT vision tower for the configured backbone family.
+
+    Returns a model whose .config exposes hidden_size, num_hidden_layers, patch_size.
+    For timm models this is attached manually; for HF models it comes from the
+    pretrained config object.
+    """
     if config.backbone == "dinov2":
         from transformers import Dinov2Config, Dinov2Model
         if pretrained:
@@ -51,6 +57,22 @@ def _load_backbone(config: DinoConfig, pretrained: bool):
         if pretrained:
             return CLIPVisionModel.from_pretrained(config.model_name)
         return CLIPVisionModel(CLIPVisionConfig.from_pretrained(config.model_name))
+    if config.backbone == "timm":
+        import timm as timm_lib
+        from types import SimpleNamespace
+        model = timm_lib.create_model(
+            config.model_name, pretrained=pretrained,
+            num_classes=0, global_pool="",  # forward_features -> [B, 1+P, D]
+        )
+        # Attach a .config so the rest of DinoCaptchaModel can be backbone-agnostic.
+        patch = model.patch_embed.patch_size
+        patch_size = patch[0] if isinstance(patch, (tuple, list)) else patch
+        model.config = SimpleNamespace(
+            hidden_size=model.embed_dim,
+            num_hidden_layers=len(model.blocks),
+            patch_size=patch_size,
+        )
+        return model
     raise ValueError(f"Unknown backbone: {config.backbone!r}")
 
 
@@ -91,15 +113,24 @@ class DinoCaptchaModel(nn.Module):
     def num_blocks(self) -> int:
         return self.backbone.config.num_hidden_layers
 
-    def _pool(self, last_hidden_state: torch.Tensor, how: str) -> torch.Tensor:
-        # last_hidden_state: [B, 1 + num_patches, hidden]; index 0 is the CLS token.
+    def _pool(self, hidden_state: torch.Tensor, how: str) -> torch.Tensor:
+        """Pool [B, 1+P, D] → [B, D]. Index 0 is CLS for all supported backbones."""
         if how == "cls":
-            return last_hidden_state[:, 0]
-        return last_hidden_state[:, 1:].mean(dim=1)
+            return hidden_state[:, 0]
+        return hidden_state[:, 1:].mean(dim=1)
+
+    def _full_forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        """Backbone-specific call that returns the final [B, 1+P, D] hidden state."""
+        if self.config.backbone == "timm":
+            # peft wraps timm by modifying linear layers in-place; calling the
+            # underlying forward_features goes through LoRA-adapted weights.
+            return self.backbone.base_model.model.forward_features(pixel_values)
+        else:
+            return self.backbone(pixel_values=pixel_values).last_hidden_state
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
-        outputs = self.backbone(pixel_values=pixel_values)
-        pooled = self._pool(outputs.last_hidden_state, self.config.head_pooling)
+        last_hidden = self._full_forward(pixel_values)
+        pooled = self._pool(last_hidden, self.config.head_pooling)
         pooled = self.head_dropout(pooled)
         logits = [head(pooled) for head in self.character_heads]
         return torch.stack(logits, dim=1)  # [B, num_chars, num_classes]
@@ -110,21 +141,35 @@ class DinoCaptchaModel(nn.Module):
 
         Keys: ``block_0`` … ``block_{L-1}`` (token-reduced hidden states), ``embedding``
         (the pooled token the heads read), and ``logits`` ([B, num_chars*num_classes]).
-        The ``input`` raw-pixel baseline is produced separately in extract.py so it can
-        match the CNN's grayscale baseline rather than the 224px RGB ViT input.
+        ``input`` (raw-pixel baseline) is produced separately in extract.py.
         """
-        outputs = self.backbone(pixel_values=pixel_values, output_hidden_states=True)
-        # hidden_states: tuple of length (num_blocks + 1); [0] is the embedding output,
-        # [i] is the output of transformer block i-1. We label block_{i} = hidden_states[i+1].
-        hidden_states = outputs.hidden_states
         reduction = self.config.token_reduction
-
         features: dict[str, torch.Tensor] = {}
-        for i in range(self.num_blocks):
-            features[f"block_{i}"] = self._pool(hidden_states[i + 1], reduction)
 
-        features["embedding"] = self._pool(outputs.last_hidden_state, self.config.head_pooling)
+        if self.config.backbone == "timm":
+            # Use forward hooks: timm doesn't have output_hidden_states, but block
+            # hooks fire after the LoRA-adapted computation so results are correct.
+            captured: dict[int, torch.Tensor] = {}
+            base = self.backbone.base_model.model
+            hooks = [
+                block.register_forward_hook(
+                    lambda m, inp, out, i=i: captured.__setitem__(i, out)
+                )
+                for i, block in enumerate(base.blocks)
+            ]
+            last_hidden = base.forward_features(pixel_values)
+            for h in hooks:
+                h.remove()
+            for i in range(self.num_blocks):
+                features[f"block_{i}"] = self._pool(captured[i], reduction)
+        else:
+            outputs = self.backbone(pixel_values=pixel_values, output_hidden_states=True)
+            # hidden_states[0] is the patch embedding; [i+1] is block i's output.
+            for i in range(self.num_blocks):
+                features[f"block_{i}"] = self._pool(outputs.hidden_states[i + 1], reduction)
+            last_hidden = outputs.last_hidden_state
 
+        features["embedding"] = self._pool(last_hidden, self.config.head_pooling)
         pooled = features["embedding"]
         logits = torch.stack([head(pooled) for head in self.character_heads], dim=1)
         features["logits"] = logits.flatten(start_dim=1)
