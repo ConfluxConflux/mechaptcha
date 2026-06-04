@@ -56,7 +56,7 @@ def plot_method_overview(data_dir: Path, output_path: Path) -> None:
     ax_txt.text(0.5, 0.94,
                 "Synthetic text CAPTCHAs —\n"
                 "sequences of five letters\n"
-                "in random fonts, made by Claude.",
+                "in random fonts.",
                 ha="center", va="top", fontsize=10, color="#222", linespacing=1.6,
                 transform=ax_txt.transAxes)
 
