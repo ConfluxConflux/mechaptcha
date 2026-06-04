@@ -152,8 +152,8 @@ def make_paper_figure():
 
         label = _LABEL[key]
         ax.set_title(
-            f'text: "{DEMO_WORD}" | perturbation: {label}',
-            fontsize=6.5, pad=2, loc="left",
+            f'perturbation: {label}',
+            fontsize=7, pad=2, loc="left",
             fontstyle="italic" if key == "clean" else "normal",
         )
 
