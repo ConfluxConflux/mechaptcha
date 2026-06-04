@@ -133,14 +133,6 @@ def make_paper_figure():
         hspace=HSPACE, wspace=WSPACE,
     )
 
-    _label_kw = dict(
-        transform=None,       # replaced per-axes below
-        fontsize=6.5, va="top", ha="left", color="#111",
-        bbox=dict(facecolor="white", alpha=0.80, edgecolor="none",
-                  pad=0.4, boxstyle="round,pad=0.2"),
-        clip_on=True,         # hard-clip to the axes boundary → no cross-cell bleed
-    )
-
     # ── Left panel: perturbation catalogue ────────────────────────────────────
     for idx, key in enumerate(_ORDER):
         row, col = divmod(idx, n_cat_cols)
@@ -158,11 +150,13 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
+        # Short label above the image — matches qa_stacked style, fits ~1.1" cell
         label = _LABEL[key]
-        title = f'perturbation: {label}  |  text: "{DEMO_WORD}"'
-        kw = {**_label_kw, "transform": ax.transAxes,
-              "fontstyle": "italic" if key == "clean" else "normal"}
-        ax.text(0.02, 0.97, title, **kw)
+        ax.set_title(
+            f'text: "{DEMO_WORD}" | perturbation: {label}',
+            fontsize=7, pad=2, loc="left",
+            fontstyle="italic" if key == "clean" else "normal",
+        )
 
     # ── Right panel: random dataset samples ───────────────────────────────────
     for j in range(n_rrows * n_rcols):
@@ -184,8 +178,10 @@ def make_paper_figure():
         else:
             perturb_str = (", ".join(sorted_active[:_MAX_PERTURBS_SHOWN])
                            + f", +{len(sorted_active) - _MAX_PERTURBS_SHOWN}")
-        title = f'text: "{text}" | perturbations: {perturb_str}'
-        ax.text(0.02, 0.97, title, **{**_label_kw, "transform": ax.transAxes})
+        ax.set_title(
+            f'text: "{text}" | perturbations: {perturb_str}',
+            fontsize=7, pad=2, loc="left",
+        )
 
     # ── Panel headers ──────────────────────────────────────────────────────────
     fig.text(0.255, 0.945, "Individual perturbations",
