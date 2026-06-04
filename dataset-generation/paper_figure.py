@@ -34,13 +34,14 @@ _LABEL = {
     "spacing_jitter": "spacing jitter",
 }
 
-# 3-column × 5-row arrangement (14 items + 1 empty cell at end)
+# Display order for the single-column catalogue
 _ORDER = [
-    "clean",      "easy_line",      "hard_line",
-    "wavy_line",  "two_lines",      "blur",
-    "dots",       "salt_pepper",    "wave",
-    "rotation",   "italic",         "bold",
-    "char_jitter","spacing_jitter",  None,         # None = empty cell
+    "clean",
+    "easy_line", "hard_line", "wavy_line", "two_lines",
+    "blur", "dots", "salt_pepper",
+    "wave", "rotation",
+    "italic", "bold",
+    "char_jitter", "spacing_jitter",
 ]
 
 # Subtle pastel group backgrounds
