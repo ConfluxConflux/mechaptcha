@@ -122,7 +122,7 @@ def make_paper_figure():
 
     n_cat = len(_ORDER)   # 14 rows in catalogue
     n_rcols = 3
-    n_rrows = 10          # 30 random samples; 10×3 gives ~correct aspect in right panel
+    n_rrows = 13          # 39 random samples; ~13×3 gives ~2.5:1 cell aspect to match images
 
     fig = plt.figure(figsize=(7.0, 4.8), facecolor="white")
 
