@@ -16,12 +16,14 @@ def _save(fig, path: Path, pgf: bool) -> None:
     if pgf:
         fig.savefig(path.with_suffix(".pgf"), bbox_inches="tight")
 
-_CONTROL_SUFFIXES = ("dumb_control", "variation_control")
+_CONTROL_SUFFIXES = ("same_data_control", "same_distribution_control")
 
 _DISPLAY_NAMES: dict[str, str] = {
-    "wave":      "letter wave",
-    "easy_line": "horizontal line",
-    "hard_line": "angled line",
+    "wave":                    "letter wave",
+    "easy_line":               "horizontal line",
+    "hard_line":               "angled line",
+    "same_data_control":       "same-data control",
+    "same_distribution_control": "same-distribution control",
 }
 
 
@@ -40,7 +42,7 @@ _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
     "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
     "Font style":        ["bold", "italic"],
-    "Controls":          ["dumb_control", "variation_control"],
+    "Controls":          ["same_data_control", "same_distribution_control"],
 }
 _PALETTES: dict[str, list[str]] = {
     "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
@@ -804,7 +806,7 @@ def plot_pca(
 
 # ── Task (transcription) accuracy per distortion ──────────────────────────────
 
-_TASK_CONTROL_EXPS = {"dumb_control", "variation_control"}
+_TASK_CONTROL_EXPS = {"same_data_control", "same_distribution_control"}
 
 
 def plot_task_accuracy(

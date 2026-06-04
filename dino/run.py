@@ -34,7 +34,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from dino.config import block_layer_names
 from dino.extract import extract_experiment
-from dino.model import load_checkpoint
+from dino.model import load_checkpoint, load_pretrained_only
 from probe.config import CLASSIFIERS, ProbeConfig
 from probe.fit import probe_experiment
 from probe.plot import plot_heatmap, plot_lines, plot_task_accuracy
@@ -51,7 +51,13 @@ def _parse_args() -> argparse.Namespace:
     mode.add_argument("--extract-only", action="store_true", help="Extract activations but do not probe")
 
     p.add_argument("--checkpoint", type=str, default=None,
-                   help="Trained LoRA checkpoint (.pt from dino.train). Required unless --probe-only.")
+                   help="Trained LoRA checkpoint (.pt from dino.train). Required unless --probe-only or --pretrained.")
+    p.add_argument("--pretrained", type=str, default=None, metavar="BACKBONE:MODEL_NAME",
+                   help="Use a pretrained-only backbone with no LoRA fine-tuning. "
+                        "Format: backbone:model_name, e.g. dinov2:facebook/dinov2-small or "
+                        "clip:openai/clip-vit-base-patch32. Mutually exclusive with --checkpoint. "
+                        "Character heads are randomly initialised so the logits layer is meaningless "
+                        "but all intermediate block features are the unmodified pretrained representations.")
     p.add_argument("--experiments", type=str, default=None,
                    help="Local paired-experiment root directory (contains <exp>/labels.csv).")
     p.add_argument("--experiment", type=str, default=None, help="Run a single experiment (default: all)")
@@ -75,6 +81,17 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--pgf", action="store_true",
                    help="Also save every chart as a same-named .pgf file for LaTeX inclusion.")
     return p.parse_args()
+
+
+_EXP_NAME_ALIASES = {
+    "dumb_control":      "same_data_control",
+    "variation_control": "same_distribution_control",
+}
+
+
+def _exp_name(dir_name: str) -> str:
+    """Translate legacy on-disk experiment names to canonical names."""
+    return _EXP_NAME_ALIASES.get(dir_name, dir_name)
 
 
 def _resolve_experiments(root: Path, single: str | None) -> list[Path]:
@@ -101,29 +118,40 @@ def main() -> None:
 
     # ── Extraction ───────────────────────────────────────────────────────────
     if not args.probe_only:
-        if args.checkpoint is None:
-            raise SystemExit("Error: --checkpoint is required unless --probe-only is set.")
+        if args.checkpoint is None and args.pretrained is None:
+            raise SystemExit("Error: --checkpoint or --pretrained is required unless --probe-only is set.")
+        if args.checkpoint is not None and args.pretrained is not None:
+            raise SystemExit("Error: --checkpoint and --pretrained are mutually exclusive.")
         if args.experiments is None:
             raise SystemExit("Error: --experiments is required for extraction.")
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Device: {device}\nLoading model from {args.checkpoint}")
-        model = load_checkpoint(args.checkpoint, map_location=device).to(device)
+        if args.pretrained:
+            parts = args.pretrained.split(":", 1)
+            if len(parts) != 2:
+                raise SystemExit("Error: --pretrained must be in the form backbone:model_name")
+            backbone, model_name = parts
+            print(f"Device: {device}\nLoading pretrained backbone {backbone}:{model_name}")
+            model = load_pretrained_only(backbone, model_name).to(device)
+        else:
+            print(f"Device: {device}\nLoading model from {args.checkpoint}")
+            model = load_checkpoint(args.checkpoint, map_location=device).to(device)
         layers = tuple(args.layers) if args.layers else block_layer_names(model.num_blocks)
         print(f"Probing layers: {layers}")
 
         experiments = _resolve_experiments(Path(args.experiments), args.experiment)
         accuracy: dict[str, dict] = {}
         for exp_dir in tqdm(experiments, desc="Extracting"):
-            out = activations_root / exp_dir.name
+            name = _exp_name(exp_dir.name)
+            out = activations_root / name
             expected = out / f"test_batch_b_{layers[-1]}.npy"
             if not args.force_extract and expected.exists():
-                tqdm.write(f"  {exp_dir.name}: activations exist, skipping")
+                tqdm.write(f"  {name}: activations exist, skipping")
                 continue
             acc = extract_experiment(exp_dir, model, device, out, layers,
                                      max_train_ids=args.max_train_ids, batch_size=args.batch_size)
-            accuracy[exp_dir.name] = acc
-            tqdm.write(f"  {exp_dir.name} -> {out}")
+            accuracy[name] = acc
+            tqdm.write(f"  {name} -> {out}")
 
         if accuracy:
             args.output.mkdir(parents=True, exist_ok=True)

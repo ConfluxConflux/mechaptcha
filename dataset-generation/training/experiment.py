@@ -108,7 +108,7 @@ def generate_controlled(
             _write_row(writer, seed, text, font_name, split, dist_a, dist_b)
 
 
-def generate_dumb_control(
+def generate_same_data_control(
     seeds: list[int],
     fonts: dict,
     output_dir: Path,
@@ -123,7 +123,7 @@ def generate_dumb_control(
         writer = csv.DictWriter(f, fieldnames=CSV_COLS)
         writer.writeheader()
 
-        for seed in tqdm(seeds, desc="  dumb_control", leave=False):
+        for seed in tqdm(seeds, desc="  same_data_control", leave=False):
             text, font_name, dist, split = _sample_base(seed, font_names)
             font = fonts[font_name]
             arr = _render(seed, text, font, dist)
@@ -133,7 +133,7 @@ def generate_dumb_control(
             _write_row(writer, seed, text, font_name, split, dist, dist)
 
 
-def generate_variation_control(
+def generate_same_distribution_control(
     seeds: list[int],
     fonts: dict,
     output_dir: Path,
@@ -149,7 +149,7 @@ def generate_variation_control(
         writer = csv.DictWriter(f, fieldnames=CSV_COLS)
         writer.writeheader()
 
-        for seed in tqdm(seeds, desc="  variation_control", leave=False):
+        for seed in tqdm(seeds, desc="  same_distribution_control", leave=False):
             b_seed = seed + VARIATION_SEED_OFFSET
 
             text_a, font_a, dist_a, split = _sample_base(seed, font_names)

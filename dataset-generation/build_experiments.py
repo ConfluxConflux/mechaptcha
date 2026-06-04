@@ -7,8 +7,8 @@ Usage:
 
 Output layout:
     data/experiments/
-        dumb_control/          # A == B exactly; probe should be ~50%
-        variation_control/     # A and B from same distribution, different seeds
+        same_data_control/          # A == B exactly; probe should be ~50%
+        same_distribution_control/     # A and B from same distribution, different seeds
         easy_line/             # A has easy_line, B doesn't; everything else identical
         hard_line/
         ...one directory per distortion...
@@ -27,8 +27,8 @@ from experiment_hf import (
 from training.distortions import DISTORTIONS
 from training.experiment import (
     generate_controlled,
-    generate_dumb_control,
-    generate_variation_control,
+    generate_same_data_control,
+    generate_same_distribution_control,
 )
 from training.fonts import download_fonts, load_fonts
 
@@ -47,12 +47,12 @@ def _generate_experiment(
         raise RuntimeError("No valid fonts found.")
 
     seeds = list(range(n))
-    if kind == "dumb_control":
-        generate_dumb_control(seeds, fonts, output_dir / "dumb_control")
-        return "dumb_control"
-    if kind == "variation_control":
-        generate_variation_control(seeds, fonts, output_dir / "variation_control")
-        return "variation_control"
+    if kind == "same_data_control":
+        generate_same_data_control(seeds, fonts, output_dir / "same_data_control")
+        return "same_data_control"
+    if kind == "same_distribution_control":
+        generate_same_distribution_control(seeds, fonts, output_dir / "same_distribution_control")
+        return "same_distribution_control"
     if kind == "controlled" and key is not None:
         generate_controlled(key, seeds, fonts, output_dir / key)
         return key
@@ -69,16 +69,16 @@ def _generate_experiments(
 ) -> None:
     seeds = list(range(n))
     jobs = (
-        [("dumb_control", None), ("variation_control", None)]
+        [("same_data_control", None), ("same_distribution_control", None)]
         + [("controlled", key) for key in distortions_to_run]
     )
 
     if workers <= 1:
-        print("dumb_control")
-        generate_dumb_control(seeds, fonts, output_dir / "dumb_control")
+        print("same_data_control")
+        generate_same_data_control(seeds, fonts, output_dir / "same_data_control")
 
-        print("variation_control")
-        generate_variation_control(seeds, fonts, output_dir / "variation_control")
+        print("same_distribution_control")
+        generate_same_distribution_control(seeds, fonts, output_dir / "same_distribution_control")
 
         for key in distortions_to_run:
             print(key)
@@ -145,7 +145,7 @@ def main() -> None:
         raise ValueError(f"Unknown distortion keys: {invalid}. Valid: {sorted(DISTORTIONS.keys())}")
 
     print(f"\nGenerating {args.n:,} pairs each for:")
-    print(f"  Controls: dumb_control, variation_control")
+    print(f"  Controls: same_data_control, same_distribution_control")
     print(f"  Distortions: {', '.join(distortions_to_run)}")
     print(f"  Output: {output_dir}\n")
 

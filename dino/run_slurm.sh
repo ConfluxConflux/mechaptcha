@@ -21,32 +21,86 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 export HF_HOME="${HF_HOME:-/tmp/hf-home}"
 
-# Extract activations, run linear probes, then automatically run MLP probes on
-# the same activations. Pass dino.run flags through for the linear probe stage.
-uv run python -m dino.run "$@"
+# Activation files are large but need to survive between jobs so --probe-only works.
+# They live in NFS scratch (MECHAPTCHA_CACHE), not the repo and not node-local scratch.
+# Override by setting MECHAPTCHA_CACHE in the environment before submitting.
+ACTIVATION_CACHE="${MECHAPTCHA_CACHE:-/nlp/scr/siddharth/mechaptcha/activations}"
 
-# Parse --output from the forwarded args to locate the activations for MLP.
-OUTPUT=""
+# Parse --output and --activations from forwarded args.
+PERSISTENT_OUTPUT=""
+CALLER_ACTIVATIONS=""
 args=("$@")
 for ((i=0; i<${#args[@]}; i++)); do
   case "${args[i]}" in
-    --output)   OUTPUT="${args[i+1]}" ;;
-    --output=*) OUTPUT="${args[i]#--output=}" ;;
+    --output)       PERSISTENT_OUTPUT="${args[i+1]}" ;;
+    --output=*)     PERSISTENT_OUTPUT="${args[i]#--output=}" ;;
+    --activations)  CALLER_ACTIVATIONS="${args[i+1]}" ;;
+    --activations=*)CALLER_ACTIVATIONS="${args[i]#--activations=}" ;;
   esac
 done
 
-if [[ -n "$OUTPUT" ]]; then
-  ACTIVATIONS="${OUTPUT}/activations"
-  MLP_OUTPUT="${OUTPUT}/mlp"
-  echo "Running MLP probes -> ${MLP_OUTPUT}"
-  uv run python -m dino.run --probe-only --classifier mlp \
-    --activations "$ACTIVATIONS" \
-    --output "$MLP_OUTPUT" \
-    --no-plot
-  echo "MLP probes done -> ${MLP_OUTPUT}/results.json"
+# Activations go to the NFS cache (persistent, reusable with --probe-only).
+# Caller can override with --activations if they want a different location.
+if [[ -n "$CALLER_ACTIVATIONS" ]]; then
+  ACTIVATIONS="$CALLER_ACTIVATIONS"
+elif [[ -n "$PERSISTENT_OUTPUT" ]]; then
+  SLUG="$(basename "$PERSISTENT_OUTPUT")"
+  ACTIVATIONS="${ACTIVATION_CACHE}/${SLUG}"
+else
+  ACTIVATIONS="${ACTIVATION_CACHE}/run-$$"
+fi
+mkdir -p "$ACTIVATIONS"
+echo "Activations -> ${ACTIVATIONS}"
+
+# Probe outputs (results JSON, charts) go to node-local scratch; only the small
+# result files are copied to the persistent output dir at the end.
+SCRATCH="${LOCAL_SCRATCH:-/tmp}/mechaptcha-artifacts"
+if [[ -n "$PERSISTENT_OUTPUT" ]]; then
+  SLUG="$(basename "$PERSISTENT_OUTPUT")"
+  SCRATCH_OUTPUT="${SCRATCH}/${SLUG}"
+else
+  SCRATCH_OUTPUT="${SCRATCH}/run-$$"
+fi
+mkdir -p "$SCRATCH_OUTPUT"
+echo "Scratch output  -> ${SCRATCH_OUTPUT}  (discarded after job)"
+
+# Strip --output from forwarded args (we replace it with scratch path).
+FILTERED_ARGS=()
+skip_next=0
+for arg in "${args[@]}"; do
+  if [[ $skip_next -eq 1 ]]; then skip_next=0; continue; fi
+  case "$arg" in
+    --output)   skip_next=1 ;;
+    --output=*) ;;
+    *)          FILTERED_ARGS+=("$arg") ;;
+  esac
+done
+
+# Run extraction + linear probes.
+uv run python -m dino.run "${FILTERED_ARGS[@]}" \
+  --output "$SCRATCH_OUTPUT" \
+  --activations "$ACTIVATIONS"
+
+# Run MLP probes on the same (cached) activations.
+MLP_SCRATCH="${SCRATCH_OUTPUT}/mlp"
+echo "Running MLP probes -> ${MLP_SCRATCH}"
+uv run python -m dino.run --probe-only --classifier mlp \
+  --activations "$ACTIVATIONS" \
+  --output "$MLP_SCRATCH" \
+  --no-plot
+echo "MLP probes done."
+
+# Copy small result files to the persistent output dir.
+if [[ -n "$PERSISTENT_OUTPUT" ]]; then
+  mkdir -p "${PERSISTENT_OUTPUT}/mlp"
+  for f in results.json transcription_accuracy.json; do
+    [[ -f "${SCRATCH_OUTPUT}/${f}" ]] && cp "${SCRATCH_OUTPUT}/${f}" "${PERSISTENT_OUTPUT}/${f}"
+  done
+  [[ -f "${MLP_SCRATCH}/results.json" ]] && cp "${MLP_SCRATCH}/results.json" "${PERSISTENT_OUTPUT}/mlp/results.json"
+  echo "Persisted results -> ${PERSISTENT_OUTPUT}/"
 fi
 
-# Regenerate cross-model comparison charts now that this run's results are in.
+# Regenerate cross-model comparison charts.
 echo "Regenerating charts..."
 uv run python charts/make_charts.py
 echo "Charts done."

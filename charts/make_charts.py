@@ -40,21 +40,25 @@ CHARTS_DIR = Path(__file__).resolve().parent
 CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("CNN",                REPO_ROOT / "probe_results/full/results.json",                         None),
     ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
-    ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
     ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
     ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",              REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
     ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
     ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
+    ("DINOv2-S",           REPO_ROOT / "dino_results/dinov2-small/results.json",                   REPO_ROOT / "dino_results/dinov2-small/activations"),
+    ("DINOv2-B",           REPO_ROOT / "dino_results/dinov2-base/results.json",                    REPO_ROOT / "dino_results/dinov2-base/activations"),
+    ("CLIP-B",             REPO_ROOT / "dino_results/clip-vit-base/results.json",                  REPO_ROOT / "dino_results/clip-vit-base/activations"),
 ]
 
 MLP_RESULTS: dict[str, Path] = {
     "CNN":              REPO_ROOT / "probe_results/full_mlp/results.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/mlp/results.json",
-    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/mlp/results.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/mlp/results.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/mlp/results.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/mlp/results.json",
     "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/mlp/results.json",
+    "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/mlp/results.json",
+    "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/mlp/results.json",
+    "CLIP-B":           REPO_ROOT / "dino_results/clip-vit-base/mlp/results.json",
 }
 
 TRAINING_METRICS: dict[str, Path | dict] = {
@@ -62,7 +66,6 @@ TRAINING_METRICS: dict[str, Path | dict] = {
         "val_seq_acc": 0.9569, "val_char_acc": None,
         "freeze_backbone": False, "train_size": None,
     },
-    "DINOv2-S-frozen":  REPO_ROOT / "dino_runs/dinov2-small-frozen/metrics.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_runs/dinov2-small-lora/metrics.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_runs/dinov2-base-lora/metrics.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_runs/dinov2-large-lora/metrics.json",
@@ -73,20 +76,19 @@ TRAINING_METRICS: dict[str, Path | dict] = {
 TRANSCRIPTION_ACCURACY: dict[str, Path] = {
     "CNN":              REPO_ROOT / "probe_results/full/transcription_accuracy.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/transcription_accuracy.json",
-    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/transcription_accuracy.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/transcription_accuracy.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
     "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
 }
 
-_CONTROL = ("dumb_control", "variation_control")
+_CONTROL = ("same_data_control", "same_distribution_control")
 
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
     "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
     "Font style":        ["bold", "italic"],
-    "Controls":          ["dumb_control", "variation_control"],
+    "Controls":          ["same_data_control", "same_distribution_control"],
 }
 _PALETTES: dict[str, list[str]] = {
     "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
@@ -98,7 +100,12 @@ _PALETTES: dict[str, list[str]] = {
 
 def _display(name: str) -> str:
     return {"wave": "letter wave", "easy_line": "horizontal line",
-            "hard_line": "angled line"}.get(name, name).replace("_", " ")
+            "hard_line": "angled line",
+            "same_data_control": "same-data control",
+            "same_distribution_control": "same-distribution control",
+            "dumb_control": "same-data control",
+            "variation_control": "same-distribution control",
+            }.get(name, name).replace("_", " ")
 
 
 def _layer_label(name: str) -> str:
@@ -185,11 +192,34 @@ def plot_per_model_accuracy(
         ys = [v.test_acc if v is not None else float("nan") for v in vals]
         ax.plot(x, ys, marker="o", markersize=4, linewidth=1.6, color=color, alpha=0.85, zorder=2)
 
-    legend_handles = [
+    # Controls as dashed muted baselines
+    control_entries = [
+        ("same_data_control",         "#999999"),
+        ("same_distribution_control", "#bbbbbb"),
+    ]
+    for exp, color in control_entries:
+        if exp not in results:
+            continue
+        vals = [results[exp].get(l) for l in layers]
+        ys = [v.test_acc if v is not None else float("nan") for v in vals]
+        ax.plot(x, ys, linestyle="--", linewidth=1.2, color=color, alpha=0.8, zorder=1)
+
+    from matplotlib.font_manager import FontProperties
+    bold_fp = FontProperties(weight="bold")
+    distortion_handles = [
         mlines.Line2D([], [], color=color, linestyle="-", marker="o",
                       markersize=4, label=_display(exp))
         for exp, color in zip(distortion_exps, flat_colors)
     ]
+    control_handles = [
+        mlines.Line2D([], [], color="none", label="Controls"),
+    ] + [
+        mlines.Line2D([], [], color=color, linestyle="--", linewidth=1.2,
+                      label=_display(exp))
+        for exp, color in control_entries if exp in results
+    ]
+    legend_handles = distortion_handles + control_handles
+
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, rotation=30, ha="right", fontsize=8)
     ax.set_ylabel("Linear probe test accuracy")
@@ -197,8 +227,12 @@ def plot_per_model_accuracy(
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     ax.set_title(f"Linear probe accuracy across layers — {label}", fontsize=11)
     ax.grid(axis="y", alpha=0.25)
-    ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
-              borderaxespad=0, frameon=True, fontsize=8, handlelength=2.2)
+    leg = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
+                    borderaxespad=0, frameon=True, fontsize=8, handlelength=2.2)
+    for text, handle in zip(leg.get_texts(), leg.legend_handles):
+        if handle.get_color() == "none":
+            text.set_fontproperties(bold_fp)
+            text.set_color("#444")
     fig.tight_layout()
     _save(fig, out, pgf)
     plt.close(fig)
@@ -246,7 +280,6 @@ def plot_transcription_accuracy(out: Path, val_size: int = 5000, pgf: bool = Fal
         ax.text(bar.get_x() + bar.get_width() / 2, acc + err + 0.005,
                 f"{acc:.1%}", ha="center", va="bottom", fontsize=8)
 
-    ax.axhline(1/26, color="#cc3300", linestyle="--", linewidth=1, label="Chance per char (1/26 ≈ 3.8%)")
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=9)
     ax.set_ylabel("Val sequence accuracy")
@@ -259,7 +292,7 @@ def plot_transcription_accuracy(out: Path, val_size: int = 5000, pgf: bool = Fal
     ax.legend(handles=[
         Patch(facecolor="#3b6ea5", label="LoRA-adapted"),
         Patch(facecolor="#b0b0b0", label="Frozen backbone (heads only)"),
-    ] + [ax.get_legend_handles_labels()[0][-1]], fontsize=8, loc="lower right")
+    ], fontsize=8, loc="lower right")
 
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
@@ -397,6 +430,55 @@ def collate_plots(models: list, pgf: bool = False) -> None:
     print(f"  collated/categories.png")
 
 
+def write_transcription_accuracy_csv(out: Path) -> None:
+    """Write charts/transcription_accuracy.csv — one row per model with overall accuracy.
+
+    Accuracy is averaged across all distortion experiments (controls excluded).
+    Columns: model, seq_acc, char_acc.
+    """
+    import csv
+    import json
+
+    _CONTROLS = {"same_data_control", "same_distribution_control", "dumb_control", "variation_control"}
+
+    rows = []
+    for label, path in TRANSCRIPTION_ACCURACY.items():
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text())
+        seq_accs, char_accs = [], []
+        for exp, splits in data.items():
+            if exp in _CONTROLS:
+                continue
+            test = splits.get("test", {})
+            for key in ("batch_a_seq_acc", "batch_b_seq_acc"):
+                v = test.get(key)
+                if v is not None:
+                    seq_accs.append(v)
+            for key in ("batch_a_char_acc", "batch_b_char_acc"):
+                v = test.get(key)
+                if v is not None:
+                    char_accs.append(v)
+        if not seq_accs:
+            continue
+        rows.append({
+            "model": label,
+            "seq_acc": round(sum(seq_accs) / len(seq_accs), 4),
+            "char_acc": round(sum(char_accs) / len(char_accs), 4) if char_accs else "",
+        })
+
+    if not rows:
+        print("  transcription_accuracy.csv skipped (no data)")
+        return
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["model", "seq_acc", "char_acc"])
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"  wrote {out.relative_to(REPO_ROOT)}")
+
+
 def main() -> None:
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
@@ -471,6 +553,7 @@ def main() -> None:
     if len(models) > 1:
         plot_peak_vs_output(models, CHARTS_DIR / "collated" / "peak_vs_output.png", pgf=args.pgf)
     plot_transcription_accuracy(CHARTS_DIR / "transcription_accuracy.png", pgf=args.pgf)
+    write_transcription_accuracy_csv(CHARTS_DIR / "transcription_accuracy.csv")
     print("Done.")
 
 

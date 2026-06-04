@@ -75,7 +75,9 @@ def extract_activations_from_images(
             logits = feats["logits"].reshape(len(chunk), model.config.num_chars, model.config.num_classes)
             pred_chunks.append(logits.argmax(dim=-1).cpu().numpy())
 
-    activations = {name: np.concatenate(chunks) for name, chunks in accumulated.items()}
+    # float16 halves storage vs float32 with negligible effect on linear probe accuracy.
+    activations = {name: np.concatenate(chunks).astype(np.float16)
+                   for name, chunks in accumulated.items()}
     predictions = np.concatenate(pred_chunks)
     return activations, predictions
 

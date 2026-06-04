@@ -101,7 +101,7 @@
       "test_acc": 0.826
     }
   },
-  "dumb_control": {
+  "same_data_control": {
     "input": {
       "train_acc": 0.5,
       "test_acc": 0.5
@@ -339,7 +339,7 @@
       "test_acc": 0.9105
     }
   },
-  "variation_control": {
+  "same_distribution_control": {
     "input": {
       "train_acc": 0.92525,
       "test_acc": 0.4805

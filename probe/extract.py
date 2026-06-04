@@ -91,11 +91,11 @@ def _make_transform(image_size: tuple[int, int]) -> transforms.Compose:
 
 
 def _reduce_conv(t: torch.Tensor, method: str) -> np.ndarray:
-    """Reduce a [B, C, H, W] conv activation to [B, features]."""
+    """Reduce a [B, C, H, W] conv activation to [B, features] in float16."""
     if method == "global_avg_pool":
-        return t.mean(dim=(2, 3)).numpy()
+        return t.mean(dim=(2, 3)).numpy().astype(np.float16)
     elif method == "flatten":
-        return t.flatten(start_dim=1).numpy()
+        return t.flatten(start_dim=1).numpy().astype(np.float16)
     raise ValueError(f"Unknown conv_reduction: {method!r}")
 
 

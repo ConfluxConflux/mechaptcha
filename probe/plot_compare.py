@@ -31,7 +31,7 @@ _FULL_LABELS  = ["input\n(pixels)", "cb0", "cb1", "cb2", "cb3", "pool", "embed",
 
 _ORDER = ["salt_pepper", "blur", "dots", "bold", "italic",
           "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
-          "dumb_control", "variation_control"]
+          "same_data_control", "same_distribution_control"]
 
 _DISPLAY_NAMES: dict[str, str] = {
     "wave":      "letter wave",
@@ -50,7 +50,7 @@ _CATEGORIES = {
                            "easy_line", "hard_line", "two_lines"],   ["#d62728", "#ff9896", "#e07070",
                                                                        "#9467bd", "#c5b0d5", "#8c5294"]),
     "Font style":        (["bold", "italic"],                        ["#2ca02c", "#98df8a"]),
-    "Controls":          (["dumb_control", "variation_control"],     ["#7f7f7f", "#bdbdbd"]),
+    "Controls":          (["same_data_control", "same_distribution_control"],     ["#7f7f7f", "#bdbdbd"]),
 }
 
 
