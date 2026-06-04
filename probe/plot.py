@@ -800,3 +800,79 @@ def plot_pca(
     plt.tight_layout(rect=[0.03, 0, 1, 0.95])
     _save(fig, output_path, pgf)
     plt.close(fig)
+
+
+# ── Task (transcription) accuracy per distortion ──────────────────────────────
+
+_TASK_CONTROL_EXPS = {"dumb_control", "variation_control"}
+
+
+def plot_task_accuracy(
+    acc_data: dict,
+    output_path: Path,
+    label: str = "",
+    pgf: bool = False,
+) -> None:
+    """Grouped bar chart of CAPTCHA transcription accuracy per distortion.
+
+    Shows test batch_a (distorted) and batch_b (clean) seq accuracy side by side,
+    sorted by batch_a accuracy ascending so hardest distortions appear left.
+    Error bars are ±1 binomial SE = sqrt(p*(1-p)/n). n is read from acc_data
+    if present (stored during extraction); omitted from title otherwise.
+    """
+    import matplotlib.pyplot as plt
+
+    exps = [e for e in acc_data if e not in _TASK_CONTROL_EXPS]
+    exps.sort(key=lambda e: acc_data[e].get("test", acc_data[e].get("train", {})).get("batch_a_seq_acc", 0))
+
+    def _split(exp):
+        return acc_data[exp].get("test") or acc_data[exp].get("train") or {}
+
+    def _get(exp, key):
+        return _split(exp).get(key, float("nan"))
+
+    def _se(p, n):
+        if np.isnan(p) or not n:
+            return 0.0
+        return (p * (1 - p) / n) ** 0.5
+
+    a_accs = [_get(e, "batch_a_seq_acc") for e in exps]
+    b_accs = [_get(e, "batch_b_seq_acc") for e in exps]
+    ns = [_split(e).get("n") for e in exps]
+    a_errs = [_se(a, n) for a, n in zip(a_accs, ns)]
+    b_errs = [_se(b, n) for b, n in zip(b_accs, ns)]
+
+    n_val = next((n for n in ns if n is not None), None)
+    n_suffix = f"  (n={n_val:,} per distortion)" if n_val is not None else ""
+    title = f"CAPTCHA task accuracy per distortion"
+    if label:
+        title += f" — {label}"
+    title += n_suffix
+
+    x = np.arange(len(exps))
+    w = 0.38
+    err_kw = {"elinewidth": 1.2, "capsize": 3, "ecolor": "#444"}
+    fig, ax = plt.subplots(figsize=(max(8, 1.4 * len(exps)), 5))
+    ax.bar(x - w / 2, a_accs, w, yerr=a_errs, label="Distorted (batch A)",
+           color="#d62728", alpha=0.85, error_kw=err_kw)
+    ax.bar(x + w / 2, b_accs, w, yerr=b_errs, label="Clean (batch B)",
+           color="#1f77b4", alpha=0.85, error_kw=err_kw)
+
+    for xi, (a, ae, b, be) in enumerate(zip(a_accs, a_errs, b_accs, b_errs)):
+        if not np.isnan(a):
+            ax.text(xi - w / 2, a + ae + 0.012, f"{a:.0%}", ha="center", fontsize=7)
+        if not np.isnan(b):
+            ax.text(xi + w / 2, b + be + 0.012, f"{b:.0%}", ha="center", fontsize=7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([_display(e) for e in exps], rotation=20, ha="right")
+    ax.set_ylabel("Sequence accuracy (test set)")
+    ax.set_ylim(0, 1.15)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title(title, fontsize=11)
+    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle=":")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    _save(fig, output_path, pgf)
+    plt.close(fig)

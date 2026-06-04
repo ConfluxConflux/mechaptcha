@@ -6,17 +6,17 @@ test-accuracy of a batch_a-vs-batch_b probe at every layer, per experiment.
 
 Usage:
     # Full pipeline: extract activations from a trained LoRA checkpoint, then probe
-    uv run python -m dino.run --checkpoint dino_runs/dinov2-small/best.pt \
+    uv run python -m dino.run --checkpoint dino_runs/dinov2-small-lora/best.pt \
         --experiments data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525 \
-        --output dino_results/dinov2-small
+        --output dino_results/dinov2-small-lora
 
     # Probe only (activations already extracted)
-    uv run python -m dino.run --probe-only --activations dino_results/dinov2-small/activations \
-        --output dino_results/dinov2-small
+    uv run python -m dino.run --probe-only --activations dino_results/dinov2-small-lora/activations \
+        --output dino_results/dinov2-small-lora
 
     # Single experiment, MLP probe
     uv run python -m dino.run --probe-only --experiment hard_line --classifier mlp \
-        --activations dino_results/dinov2-small/activations --output dino_results/dinov2-small
+        --activations dino_results/dinov2-small-lora/activations --output dino_results/dinov2-small-lora
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ from dino.extract import extract_experiment
 from dino.model import load_checkpoint
 from probe.config import CLASSIFIERS, ProbeConfig
 from probe.fit import probe_experiment
-from probe.plot import plot_heatmap, plot_lines
+from probe.plot import plot_heatmap, plot_lines, plot_task_accuracy
 from probe.results import format_table, save_results
 
 
@@ -131,6 +131,9 @@ def main() -> None:
             acc_path.write_text(json.dumps(accuracy, indent=2))
             print(f"\nTranscription accuracy (behavioral-invariance check) -> {acc_path}")
             _print_invariance_summary(accuracy)
+            if not args.no_plot:
+                plot_task_accuracy(accuracy, args.output / "task_accuracy.png")
+                print(f"Task accuracy chart saved to {args.output / 'task_accuracy.png'}")
     else:
         layers = tuple(args.layers) if args.layers else _infer_layers_from_activations(activations_root)
 

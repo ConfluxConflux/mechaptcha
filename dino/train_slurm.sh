@@ -27,6 +27,39 @@ if [[ -z "${HF_TOKEN:-}" && -r "$HOME/.shell/secrets/hf_token_write" ]]; then
 fi
 export HUGGING_FACE_HUB_TOKEN="${HUGGING_FACE_HUB_TOKEN:-${HF_TOKEN:-}}"
 
-# LoRA fine-tune the DINOv2 backbone on the CAPTCHA transcription task.
-# Pass any dino.train flags through, e.g. --model-name facebook/dinov2-base.
+# Parse --output and --experiments from the forwarded args so we can derive
+# the probe job's checkpoint/output paths and auto-submit it as a dependent.
+CHECKPOINT=""
+EXPERIMENTS="${DINO_EXPERIMENTS:-data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525}"
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+  case "${args[i]}" in
+    --output)       CHECKPOINT="${args[i+1]}" ;;
+    --output=*)     CHECKPOINT="${args[i]#--output=}" ;;
+    --experiments)  EXPERIMENTS="${args[i+1]}" ;;
+    --experiments=*)EXPERIMENTS="${args[i]#--experiments=}" ;;
+  esac
+done
+
+# Derive the probe output dir from the checkpoint path:
+#   dino_runs/<slug>/best.pt  ->  dino_results/<slug>
+if [[ -n "$CHECKPOINT" ]]; then
+  SLUG="$(basename "$(dirname "$CHECKPOINT")")"
+  PROBE_OUTPUT="dino_results/${SLUG}"
+  PROBE_PARTITION="${SLURM_JOB_PARTITION:-jag-standard},sc-loprio"
+
+  PROBE_JOB=$(sbatch \
+    --partition="$PROBE_PARTITION" \
+    --parsable \
+    --dependency="afterok:${SLURM_JOB_ID}" \
+    dino/run_slurm.sh \
+      --checkpoint "$CHECKPOINT" \
+      --experiments "$EXPERIMENTS" \
+      --output "$PROBE_OUTPUT")
+  echo "Queued probe job ${PROBE_JOB} (after train job ${SLURM_JOB_ID}) -> ${PROBE_OUTPUT}"
+else
+  echo "Warning: --output not specified; skipping auto-probe submission."
+fi
+
+# LoRA fine-tune the backbone on the CAPTCHA transcription task.
 uv run python -m dino.train "$@"

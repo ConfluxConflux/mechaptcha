@@ -229,7 +229,7 @@ def extract_experiment(
         texts = split_rows.set_index("id").loc[split_ids, "text"].tolist()
         np.save(output_dir / f"{split}_ids.npy", np.array(split_ids))
 
-        accuracy[split] = {}
+        accuracy[split] = {"n": len(split_ids)}
         for batch in ("batch_a", "batch_b"):
             img_dir = experiment_dir / batch / "images"
             paths = [img_dir / f"{sid:06d}.png" for sid in split_ids]

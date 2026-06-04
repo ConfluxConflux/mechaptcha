@@ -39,7 +39,7 @@ if str(REPO_ROOT) not in sys.path:
 from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig, get_model_layers
 from probe.extract import extract_experiment, extract_hf_experiments, load_model
 from probe.fit import probe_experiment
-from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_task_accuracy
 from probe.results import format_table, save_results
 
 
@@ -172,6 +172,9 @@ def main() -> None:
                 args.output.mkdir(parents=True, exist_ok=True)
                 acc_path.write_text(json.dumps(transcription_accuracy, indent=2))
                 print(f"Transcription accuracy saved to {acc_path}")
+                if not args.no_plot:
+                    plot_task_accuracy(transcription_accuracy, args.output / "task_accuracy.png")
+                    print(f"Task accuracy chart saved to {args.output / 'task_accuracy.png'}")
         else:
             print(f"Loading experiments from HF dataset {args.experiments}")
             extract_hf_experiments(

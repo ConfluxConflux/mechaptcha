@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from probe.config import ALL_LAYERS
-from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_task_accuracy
 from probe.results import AllResults, load_results
 
 CHARTS_DIR = Path(__file__).resolve().parent
@@ -42,7 +42,7 @@ CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
     ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
     ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
-    ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",             REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
+    ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",              REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
     ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
     ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
 ]
@@ -322,54 +322,6 @@ def plot_peak_vs_output(models, out: Path, pgf: bool = False) -> None:
     print(f"  wrote {out.relative_to(REPO_ROOT)}")
 
 
-def plot_task_accuracy(
-    acc_data: dict,
-    out: Path,
-    label: str,
-    pgf: bool = False,
-) -> None:
-    """Grouped bar chart of CAPTCHA transcription accuracy per distortion for one model.
-
-    Shows test batch_a (distorted) and batch_b (clean) seq accuracy side by side,
-    sorted by batch_a accuracy ascending so hardest distortions appear left.
-    """
-    _CONTROL_EXPS = {"dumb_control", "variation_control"}
-    exps = [e for e in acc_data if e not in _CONTROL_EXPS]
-    exps.sort(key=lambda e: acc_data[e].get("test", acc_data[e].get("train", {})).get("batch_a_seq_acc", 0))
-
-    def _get(exp, key):
-        split = acc_data[exp].get("test") or acc_data[exp].get("train") or {}
-        return split.get(key, float("nan"))
-
-    a_accs = [_get(e, "batch_a_seq_acc") for e in exps]
-    b_accs = [_get(e, "batch_b_seq_acc") for e in exps]
-
-    x = np.arange(len(exps))
-    w = 0.38
-    fig, ax = plt.subplots(figsize=(max(8, 1.4 * len(exps)), 5))
-    ax.bar(x - w / 2, a_accs, w, label="Distorted (batch A)", color="#d62728", alpha=0.85)
-    ax.bar(x + w / 2, b_accs, w, label="Clean (batch B)", color="#1f77b4", alpha=0.85)
-
-    for xi, (a, b) in enumerate(zip(a_accs, b_accs)):
-        if not np.isnan(a):
-            ax.text(xi - w / 2, a + 0.008, f"{a:.0%}", ha="center", fontsize=7)
-        if not np.isnan(b):
-            ax.text(xi + w / 2, b + 0.008, f"{b:.0%}", ha="center", fontsize=7)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([_display(e) for e in exps], rotation=20, ha="right")
-    ax.set_ylabel("Sequence accuracy (test set)")
-    ax.set_ylim(0, 1.12)
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
-    ax.set_title(f"CAPTCHA task accuracy per distortion — {label}", fontsize=11)
-    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle=":")
-    ax.legend(fontsize=9)
-    ax.grid(axis="y", alpha=0.25)
-    fig.tight_layout()
-    _save(fig, out, pgf)
-    plt.close(fig)
-
-
 def _short_label(label: str) -> str:
     """Compact model name for subplot titles."""
     return label.split(" ")[0]
@@ -508,7 +460,7 @@ def main() -> None:
         if acc_path and acc_path.exists():
             import json
             acc_data = json.loads(acc_path.read_text())
-            plot_task_accuracy(acc_data, out_dir / "task_accuracy.png", label, pgf=args.pgf)
+            plot_task_accuracy(acc_data, out_dir / "task_accuracy.png", label=label, pgf=args.pgf)
             print(f"  task_accuracy.png")
         else:
             print(f"  task_accuracy.png skipped (no transcription_accuracy.json)")

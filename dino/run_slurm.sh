@@ -21,9 +21,32 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 export HF_HOME="${HF_HOME:-/tmp/hf-home}"
 
-# Extract DINOv2 activations from the paired experiments and train probes.
-# Pass dino.run flags through, e.g.:
-#   sbatch dino/run_slurm.sh --checkpoint dino_runs/dinov2-small/best.pt \
-#     --experiments data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525 \
-#     --output dino_results/dinov2-small
+# Extract activations, run linear probes, then automatically run MLP probes on
+# the same activations. Pass dino.run flags through for the linear probe stage.
 uv run python -m dino.run "$@"
+
+# Parse --output from the forwarded args to locate the activations for MLP.
+OUTPUT=""
+args=("$@")
+for ((i=0; i<${#args[@]}; i++)); do
+  case "${args[i]}" in
+    --output)   OUTPUT="${args[i+1]}" ;;
+    --output=*) OUTPUT="${args[i]#--output=}" ;;
+  esac
+done
+
+if [[ -n "$OUTPUT" ]]; then
+  ACTIVATIONS="${OUTPUT}/activations"
+  MLP_OUTPUT="${OUTPUT}/mlp"
+  echo "Running MLP probes -> ${MLP_OUTPUT}"
+  uv run python -m dino.run --probe-only --classifier mlp \
+    --activations "$ACTIVATIONS" \
+    --output "$MLP_OUTPUT" \
+    --no-plot
+  echo "MLP probes done -> ${MLP_OUTPUT}/results.json"
+fi
+
+# Regenerate cross-model comparison charts now that this run's results are in.
+echo "Regenerating charts..."
+uv run python charts/make_charts.py
+echo "Charts done."
