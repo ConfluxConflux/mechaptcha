@@ -166,15 +166,9 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
-        sorted_active = sorted(active)
-        if not sorted_active:
-            perturb_str = "none"
-        elif len(sorted_active) <= 2:
-            perturb_str = ", ".join(sorted_active)
-        else:
-            perturb_str = ", ".join(sorted_active[:2]) + f", +{len(sorted_active) - 2}"
+        distortion_str = ", ".join(sorted(active)) if active else "none"
         ax.set_title(
-            f'"{text}" | {perturb_str}',
+            f'text: "{text}" | perturbations: {distortion_str}',
             fontsize=7, pad=2, loc="left",
         )
 
