@@ -40,6 +40,7 @@ CHARTS_DIR = Path(__file__).resolve().parent
 CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("CNN",                REPO_ROOT / "probe_results/full/results.json",                         None),
     ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
+    ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
     ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
     ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",              REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
     ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
@@ -52,6 +53,7 @@ CANDIDATES: list[tuple[str, Path, Path | None]] = [
 MLP_RESULTS: dict[str, Path] = {
     "CNN":              REPO_ROOT / "probe_results/full_mlp/results.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/mlp/results.json",
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/mlp/results.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/mlp/results.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/mlp/results.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/mlp/results.json",
@@ -66,6 +68,7 @@ TRAINING_METRICS: dict[str, Path | dict] = {
         "val_seq_acc": 0.9569, "val_char_acc": None,
         "freeze_backbone": False, "train_size": None,
     },
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_runs/dinov2-small-frozen/metrics.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_runs/dinov2-small-lora/metrics.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_runs/dinov2-base-lora/metrics.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_runs/dinov2-large-lora/metrics.json",
@@ -76,6 +79,7 @@ TRAINING_METRICS: dict[str, Path | dict] = {
 TRANSCRIPTION_ACCURACY: dict[str, Path] = {
     "CNN":              REPO_ROOT / "probe_results/full/transcription_accuracy.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/transcription_accuracy.json",
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/transcription_accuracy.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/transcription_accuracy.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",

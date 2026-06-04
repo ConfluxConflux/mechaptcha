@@ -102,15 +102,6 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-_EXP_NAME_ALIASES = {
-    "dumb_control":      "same_data_control",
-    "variation_control": "same_distribution_control",
-}
-
-
-def _exp_name(dir_name: str) -> str:
-    return _EXP_NAME_ALIASES.get(dir_name, dir_name)
-
 
 def _resolve_experiments(args: argparse.Namespace, root: Path) -> list[Path]:
     if args.experiment:
@@ -170,13 +161,13 @@ def main() -> None:
         if local_experiments:
             transcription_accuracy: dict = {}
             for exp_dir in tqdm(experiments, desc="Extracting"):
-                out = args.activations / _exp_name(exp_dir.name)
+                out = args.activations / exp_dir.name
                 if not args.force_extract and not _needs_extraction(out, config):
-                    tqdm.write(f"  {_exp_name(exp_dir.name)}: activations already exist, skipping")
+                    tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
                     continue
                 acc = extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
-                transcription_accuracy[_exp_name(exp_dir.name)] = acc
-                tqdm.write(f"  {_exp_name(exp_dir.name)} -> {out}")
+                transcription_accuracy[exp_dir.name] = acc
+                tqdm.write(f"  {exp_dir.name} -> {out}")
             if transcription_accuracy:
                 acc_path = args.output / "transcription_accuracy.json"
                 args.output.mkdir(parents=True, exist_ok=True)

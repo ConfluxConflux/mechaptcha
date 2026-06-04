@@ -1,60 +1,6 @@
-model,experiment,test_batch_a_seq_acc,test_batch_b_seq_acc,test_batch_a_char_acc,test_batch_b_char_acc
-CNN,blur,0.8429,0.8863,0.96264,0.97416
-CNN,bold,0.8337,0.891,0.96058,0.97512
-CNN,dots,0.8017,0.9196,0.95248,0.98272
-CNN,same-data control,0.8621,0.8621,0.96764,0.96764
-CNN,horizontal line,0.8673,0.9234,0.96812,0.98282
-CNN,angled line,0.8107,0.9234,0.95666,0.98282
-CNN,italic,0.8639,0.862,0.96786,0.96762
-CNN,rotation,0.8137,0.9142,0.95632,0.97974
-CNN,salt pepper,0.8487,0.8752,0.9643,0.97134
-CNN,two lines,0.7724,0.9234,0.9446,0.98282
-CNN,same-distribution control,0.8621,0.0,0.96764,0.0388
-CNN,letter wave,0.8364,0.8921,0.96088,0.97582
-CNN,wavy line,0.7565,0.9234,0.9425,0.98282
-DINOv2-S-lora,blur,0.8801,0.8727,0.97168,0.96966
-DINOv2-S-lora,bold,0.8173,0.9367,0.95532,0.98596
-DINOv2-S-lora,dots,0.7984,0.953,0.95134,0.98972
-DINOv2-S-lora,horizontal line,0.8547,0.9139,0.9638,0.98082
-DINOv2-S-lora,angled line,0.8612,0.9139,0.96732,0.98082
-DINOv2-S-lora,italic,0.8687,0.8789,0.96882,0.97096
-DINOv2-S-lora,rotation,0.8636,0.8886,0.9668,0.974
-DINOv2-S-lora,salt pepper,0.8548,0.8955,0.96502,0.97586
-DINOv2-S-lora,same-data control,0.8767,0.8767,0.97066,0.97066
-DINOv2-S-lora,same-distribution control,0.8767,0.0,0.97066,0.03894
-DINOv2-S-lora,two lines,0.8121,0.9139,0.95422,0.98082
-DINOv2-S-lora,letter wave,0.8499,0.9036,0.96324,0.97832
-DINOv2-S-lora,wavy line,0.8164,0.9139,0.95482,0.98082
-DINOv2-B-lora,blur,0.9302,0.9284,0.98466,0.98406
-DINOv2-B-lora,bold,0.8881,0.9699,0.9746,0.99362
-DINOv2-B-lora,dots,0.8798,0.9784,0.97274,0.99546
-DINOv2-B-lora,horizontal line,0.9188,0.955,0.98154,0.9903
-DINOv2-B-lora,angled line,0.9241,0.955,0.9831,0.9903
-DINOv2-B-lora,italic,0.9257,0.929,0.98338,0.98428
-DINOv2-B-lora,rotation,0.9219,0.9328,0.98242,0.9852
-DINOv2-B-lora,salt pepper,0.9139,0.9426,0.9807,0.98724
-DINOv2-B-lora,same-data control,0.9276,0.9276,0.98382,0.98382
-DINOv2-B-lora,same-distribution control,0.9276,0.0,0.98382,0.03868
-DINOv2-B-lora,two lines,0.8839,0.955,0.97364,0.9903
-DINOv2-B-lora,letter wave,0.911,0.9466,0.9796,0.9885
-DINOv2-B-lora,wavy line,0.8901,0.955,0.97496,0.9903
-CLIP-B-lora,bold,0.8653,0.9542,0.96908,0.98984
-CLIP-B-lora,dots,0.8519,0.9726,0.96566,0.99428
-CLIP-B-lora,horizontal line,0.897,0.9414,0.97552,0.98704
-CLIP-B-lora,angled line,0.9017,0.9414,0.97752,0.98704
-CLIP-B-lora,italic,0.9077,0.9138,0.97852,0.98048
-CLIP-B-lora,rotation,0.9019,0.9181,0.97746,0.98136
-CLIP-B-lora,salt pepper,0.8936,0.9276,0.97484,0.98402
-CLIP-B-lora,same-data control,0.9088,0.9088,0.97916,0.97916
-CLIP-B-lora,same-distribution control,0.9088,0.0,0.97916,0.0389
-CLIP-B-lora,two lines,0.8594,0.9414,0.96714,0.98704
-CLIP-B-lora,letter wave,0.8892,0.9333,0.97406,0.9852
-CLIP-B-lora,wavy line,0.865,0.9414,0.96832,0.98704
-ViT-B-lora,angled line,0.7546,0.8488,0.9369,0.96404
-ViT-B-lora,italic,0.7878,0.7911,0.94548,0.94634
-ViT-B-lora,rotation,0.7707,0.8069,0.93996,0.95094
-ViT-B-lora,salt pepper,0.7616,0.8172,0.93668,0.95468
-ViT-B-lora,two lines,0.6944,0.8488,0.91858,0.96404
-ViT-B-lora,same-distribution control,0.7888,0.0,0.94548,0.03874
-ViT-B-lora,letter wave,0.746,0.8322,0.93252,0.95936
-ViT-B-lora,wavy line,0.6828,0.8488,0.91414,0.96404
+model,seq_acc,char_acc
+CNN,0.8628,0.9679
+DINOv2-S-lora,0.8755,0.9705
+DINOv2-B-lora,0.9289,0.9841
+CLIP-B-lora,0.9109,0.9796
+ViT-B-lora,0.7851,0.9448

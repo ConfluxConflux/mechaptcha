@@ -83,16 +83,6 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-_EXP_NAME_ALIASES = {
-    "dumb_control":      "same_data_control",
-    "variation_control": "same_distribution_control",
-}
-
-
-def _exp_name(dir_name: str) -> str:
-    """Translate legacy on-disk experiment names to canonical names."""
-    return _EXP_NAME_ALIASES.get(dir_name, dir_name)
-
 
 def _resolve_experiments(root: Path, single: str | None) -> list[Path]:
     if single:
@@ -142,7 +132,7 @@ def main() -> None:
         experiments = _resolve_experiments(Path(args.experiments), args.experiment)
         accuracy: dict[str, dict] = {}
         for exp_dir in tqdm(experiments, desc="Extracting"):
-            name = _exp_name(exp_dir.name)
+            name = exp_dir.name
             out = activations_root / name
             expected = out / f"test_batch_b_{layers[-1]}.npy"
             if not args.force_extract and expected.exists():
