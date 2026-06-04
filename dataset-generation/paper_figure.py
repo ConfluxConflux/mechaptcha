@@ -111,8 +111,8 @@ def make_paper_figure():
 
     # hspace ≈ 0.50 gives each row enough gap for the set_title label while keeping
     # cells at roughly the correct 2.5:1 aspect ratio for the 160×64 CAPTCHA images.
-    HSPACE = 0.50
-    WSPACE = 0.10
+    HSPACE = 0.12
+    WSPACE = 0.06
 
     fig = plt.figure(figsize=(7.0, 3.9), facecolor="white")
 
