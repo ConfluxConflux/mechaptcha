@@ -121,10 +121,10 @@ def make_paper_figure():
     fonts = load_fonts(FONT_DIR)
 
     n_cat = len(_ORDER)   # 14 rows in catalogue
-    n_rcols = 4
-    n_rrows = 5           # 20 random samples
+    n_rcols = 3
+    n_rrows = 10          # 30 random samples; 10×3 gives ~correct aspect in right panel
 
-    fig = plt.figure(figsize=(7.0, 4.3), facecolor="white")
+    fig = plt.figure(figsize=(7.0, 4.8), facecolor="white")
 
     # ── Outer layout: [left panel | right panel] ───────────────────────────────
     # left=0.155 leaves room for the text labels that sit outside the axes
@@ -136,7 +136,7 @@ def make_paper_figure():
         wspace=0.07,
     )
     gs_left  = gridspec.GridSpecFromSubplotSpec(n_cat, 1,          subplot_spec=gs[0], hspace=0.12)
-    gs_right = gridspec.GridSpecFromSubplotSpec(n_rrows, n_rcols,  subplot_spec=gs[1], hspace=0.05, wspace=0.04)
+    gs_right = gridspec.GridSpecFromSubplotSpec(n_rrows, n_rcols,  subplot_spec=gs[1], hspace=0.04, wspace=0.04)
 
     # ── Left panel: one row per perturbation ────────────────────────────────────
     for i, key in enumerate(_ORDER):
