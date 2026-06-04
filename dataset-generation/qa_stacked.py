@@ -66,7 +66,7 @@ def make_qa():
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
         distortion_str = ", ".join(sorted(active)) if active else "none"
-        ax.set_title(f'text: "{text}" | distortions: {distortion_str}',
+        ax.set_title(f'text: "{text}" | perturbations: {distortion_str}',
                      fontsize=7, pad=2, loc="left")
 
     # ── Divider ─────────────────────────────────────────────────────────────
