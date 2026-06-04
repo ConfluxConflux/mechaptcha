@@ -14,8 +14,8 @@ CHARSET = "abcdefghijklmnopqrstuvwxyz"
 DEMO_WORD = "chars"        # shown for every catalogue cell
 CATALOGUE_FONT = "lato"   # falls back to first available font
 
-# Max chars for right-panel title (at 7pt, ~1.1" cell ≈ 20 chars safe)
-_TITLE_MAX = 34
+# Right-panel: show at most this many perturbation names to avoid overflow
+_MAX_PERTURBS_SHOWN = 3
 
 _LABEL = {
     "clean":          "clean",
