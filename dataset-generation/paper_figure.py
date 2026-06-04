@@ -150,10 +150,10 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
-        # Short label above the image — matches qa_stacked style, fits ~1.1" cell
+        # Perturbation name above the image — fits the 1.1"-wide cell cleanly
         label = _LABEL[key]
         ax.set_title(
-            f'text: "{DEMO_WORD}" | perturbation: {label}',
+            label,
             fontsize=7, pad=2, loc="left",
             fontstyle="italic" if key == "clean" else "normal",
         )
