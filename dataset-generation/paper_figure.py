@@ -170,10 +170,9 @@ def make_paper_figure():
             sp.set_color("#ccc")
 
         distortion_str = ", ".join(sorted(active)) if active else "none"
-        ax.set_title(
-            f'text: "{text}" | perturbations: {distortion_str}',
-            fontsize=6.5, pad=2, loc="left",
-        )
+        full = f'text: "{text}" | perturbations: {distortion_str}'
+        short = full if len(full) <= _TITLE_MAX else full[:_TITLE_MAX - 1] + "…"
+        ax.set_title(short, fontsize=7, pad=2, loc="left")
 
     # ── Panel headers ──────────────────────────────────────────────────────────
     fig.text(0.255, 0.945, "Individual perturbations",
