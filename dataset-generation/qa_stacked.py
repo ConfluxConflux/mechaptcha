@@ -72,7 +72,7 @@ def make_qa():
     # ── Divider ─────────────────────────────────────────────────────────────
     div_ax = axes[n_stacked]
     div_ax.axis("off")
-    div_ax.text(0.5, 0.5, "SECTION 2: each distortion in isolation",
+    div_ax.text(0.5, 0.5, "SECTION 2: each perturbation in isolation",
                 ha="center", va="center", fontsize=9, fontweight="bold",
                 transform=div_ax.transAxes)
 
