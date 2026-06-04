@@ -114,7 +114,7 @@ def make_paper_figure():
     HSPACE = 0.40   # room above each image for the set_title label
     WSPACE = 0.08
 
-    fig = plt.figure(figsize=(7.0, 3.9), facecolor="white")
+    fig = plt.figure(figsize=(7.0, 4.5), facecolor="white")
 
     # ── Outer layout: [catalogue | samples], equal-width panels ───────────────
     gs = gridspec.GridSpec(
