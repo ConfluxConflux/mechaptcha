@@ -48,9 +48,9 @@ class ProbeConfig:
             raise ValueError(f"classifier must be one of {CLASSIFIERS}, got {self.classifier!r}")
         if self.conv_reduction not in CONV_REDUCTIONS:
             raise ValueError(f"conv_reduction must be one of {CONV_REDUCTIONS}, got {self.conv_reduction!r}")
-        unknown = set(self.layers) - set(ALL_LAYERS)
-        if unknown:
-            raise ValueError(f"Unknown layers: {unknown}. Valid: {ALL_LAYERS}")
+        # Layer names are not restricted to the CNN's ALL_LAYERS: other backbones
+        # (e.g. the DINOv2 ViT in dino/) probe layers like 'block_0' … 'block_N'.
+        # fit/results/plot key purely on layer names, so any string is valid here.
 
     def for_model(self, model) -> "ProbeConfig":
         """Return a copy with layers filtered to those that actually exist in model."""

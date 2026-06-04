@@ -1,6 +1,7 @@
 # pyright: reportPrivateImportUsage=false
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import torch
@@ -30,6 +31,7 @@ class MechaptchaDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         alphabet: str,
         num_chars: int,
         metadata_columns: tuple[str, ...],
+        transform: Callable | None = None,
     ) -> None:
         self.dataset = dataset
         self.image_column = image_column
@@ -39,7 +41,9 @@ class MechaptchaDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         self.alphabet = alphabet
         self.num_chars = num_chars
         self.metadata_columns = metadata_columns
-        self.transform = transforms.Compose(
+        # Default: grayscale CNN preprocessing. Backbones with their own
+        # preprocessing (e.g. the RGB 224px DINOv2 ViT) pass a custom transform.
+        self.transform = transform or transforms.Compose(
             [
                 transforms.Grayscale(num_output_channels=1),
                 transforms.Resize(image_size),
@@ -63,7 +67,11 @@ class MechaptchaDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor, torch.Ten
         return image_tensor, label_tensor, id_tensor, metadata_tensor
 
 
-def load_mechaptcha_datasets(config: TrainConfig, model_config: CaptchaModelConfig) -> DatasetBundle:
+def load_mechaptcha_datasets(
+    config: TrainConfig,
+    model_config: CaptchaModelConfig,
+    transform: Callable | None = None,
+) -> DatasetBundle:
     train_split = load_hf_split(config, config.train_split, config.train_size)
     val_split = load_hf_split(config, config.val_split, config.val_size)
     image_size = (config.image_height, config.image_width)
@@ -79,6 +87,7 @@ def load_mechaptcha_datasets(config: TrainConfig, model_config: CaptchaModelConf
             alphabet=model_config.alphabet,
             num_chars=model_config.num_chars,
             metadata_columns=metadata_columns,
+            transform=transform,
         ),
         val=MechaptchaDataset(
             dataset=val_split,
@@ -89,6 +98,7 @@ def load_mechaptcha_datasets(config: TrainConfig, model_config: CaptchaModelConf
             alphabet=model_config.alphabet,
             num_chars=model_config.num_chars,
             metadata_columns=metadata_columns,
+            transform=transform,
         ),
     )
 
