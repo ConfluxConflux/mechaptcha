@@ -34,9 +34,11 @@ _ORDER = ["salt_pepper", "blur", "dots", "bold", "italic",
           "dumb_control", "variation_control"]
 
 _DISPLAY_NAMES: dict[str, str] = {
-    "wave":      "letter wave",
-    "easy_line": "horizontal line",
-    "hard_line": "angled line",
+    "wave":             "letter wave",
+    "easy_line":        "horizontal line",
+    "hard_line":        "angled line",
+    "dumb_control":     "same-data control",
+    "variation_control": "same-distribution control",
 }
 
 
