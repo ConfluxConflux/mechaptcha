@@ -9,7 +9,7 @@ from training.fonts import load_fonts
 from training.renderer import render_captcha
 from training.distortions import DISTORTIONS, sample_distortions
 
-FONT_DIR = Path("data/fonts")
+FONT_DIR = Path("../data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
 DEMO_WORD = "noise"        # shown for every catalogue row; change as desired
 CATALOGUE_FONT = "lato"   # clean sans-serif; falls back to first available font
