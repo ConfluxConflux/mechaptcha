@@ -151,9 +151,10 @@ def make_paper_figure():
             sp.set_color("#ccc")
 
         label = _LABEL[key]
+        # Match qa_stacked label style, shortened to fit ~1.1" cell width
+        title = f'text: "{DEMO_WORD}" | perturbation: {label}'
         ax.set_title(
-            f'perturbation: {label}',
-            fontsize=7, pad=2, loc="left",
+            title, fontsize=7, pad=2, loc="left",
             fontstyle="italic" if key == "clean" else "normal",
         )
 
