@@ -11,8 +11,8 @@ from training.distortions import DISTORTIONS, sample_distortions
 
 FONT_DIR = Path("../data/fonts")
 CHARSET = "abcdefghijklmnopqrstuvwxyz"
-DEMO_WORD = "noise"        # shown for every catalogue row; change as desired
-CATALOGUE_FONT = "lato"   # clean sans-serif; falls back to first available font
+DEMO_WORD = "chars"        # shown for every catalogue cell
+CATALOGUE_FONT = "lato"   # falls back to first available font
 
 _LABEL = {
     "clean":          "clean",
@@ -31,17 +31,16 @@ _LABEL = {
     "spacing_jitter": "spacing jitter",
 }
 
-# Display order — grouped by category
+# 3-column × 5-row arrangement (14 items + 1 empty cell at end)
 _ORDER = [
-    "clean",
-    "easy_line", "hard_line", "wavy_line", "two_lines",
-    "blur", "dots", "salt_pepper",
-    "wave", "rotation",
-    "italic", "bold",
-    "char_jitter", "spacing_jitter",
+    "clean",      "easy_line",      "hard_line",
+    "wavy_line",  "two_lines",      "blur",
+    "dots",       "salt_pepper",    "wave",
+    "rotation",   "italic",         "bold",
+    "char_jitter","spacing_jitter",  None,         # None = empty cell
 ]
 
-# Pastel background per group for subtle visual grouping
+# Subtle pastel group backgrounds
 _BG = {
     "clean":          "#ffffff",
     "easy_line":      "#eef2ff",
@@ -57,24 +56,6 @@ _BG = {
     "bold":           "#fffbec",
     "char_jitter":    "#f8f0ff",
     "spacing_jitter": "#f8f0ff",
-}
-
-# Accent colour for the left-side category indicator dot
-_ACCENT = {
-    "clean":          "#aaaaaa",
-    "easy_line":      "#7b8ee8",
-    "hard_line":      "#7b8ee8",
-    "wavy_line":      "#7b8ee8",
-    "two_lines":      "#7b8ee8",
-    "blur":           "#e88a50",
-    "dots":           "#e88a50",
-    "salt_pepper":    "#e88a50",
-    "wave":           "#4db87a",
-    "rotation":       "#4db87a",
-    "italic":         "#c9a830",
-    "bold":           "#c9a830",
-    "char_jitter":    "#9c6dd4",
-    "spacing_jitter": "#9c6dd4",
 }
 
 
@@ -96,8 +77,8 @@ def _render_single(key: str, fonts: dict) -> np.ndarray:
     return arr
 
 
-def _render_random(seed: int, fonts: dict) -> np.ndarray:
-    """Render a random dataset sample."""
+def _render_random(seed: int, fonts: dict) -> tuple[np.ndarray, str, set]:
+    """Render a random dataset sample; returns (image, text, active_perturbations)."""
     font_names = sorted(fonts.keys())
     rng = np.random.default_rng(seed)
     text = "".join(rng.choice(list(CHARSET), size=5))
@@ -113,34 +94,51 @@ def _render_random(seed: int, fonts: dict) -> np.ndarray:
     for key in DISTORTIONS:
         if key in active:
             arr = DISTORTIONS[key](arr, np.random.default_rng(seed))
-    return arr
+    return arr, text, active
 
 
 def make_paper_figure():
     print("Loading fonts...")
     fonts = load_fonts(FONT_DIR)
 
-    n_cat = len(_ORDER)   # 14 rows in catalogue
-    n_rcols = 3
-    n_rrows = 13          # 39 random samples; ~13×3 gives ~2.5:1 cell aspect to match images
+    n_cat_cols = 3
+    n_cat_rows = 5   # 3×5 = 15 cells, 14 perturbations + 1 empty
+    n_rcols    = 3
+    n_rrows    = 5   # 15 random samples
 
-    fig = plt.figure(figsize=(7.0, 4.8), facecolor="white")
+    # hspace ≈ 0.50 gives each row enough gap for the set_title label while keeping
+    # cells at roughly the correct 2.5:1 aspect ratio for the 160×64 CAPTCHA images.
+    HSPACE = 0.50
+    WSPACE = 0.04
 
-    # ── Outer layout: [left panel | right panel] ───────────────────────────────
-    # left=0.155 leaves room for the text labels that sit outside the axes
+    fig = plt.figure(figsize=(7.0, 3.9), facecolor="white")
+
+    # ── Outer layout: [catalogue | samples], equal-width panels ───────────────
     gs = gridspec.GridSpec(
         1, 2, figure=fig,
-        width_ratios=[1.0, 0.70],
-        left=0.155, right=0.99,
+        width_ratios=[1.0, 1.0],
+        left=0.01, right=0.99,
         top=0.91, bottom=0.01,
-        wspace=0.07,
+        wspace=0.06,
     )
-    gs_left  = gridspec.GridSpecFromSubplotSpec(n_cat, 1,          subplot_spec=gs[0], hspace=0.12)
-    gs_right = gridspec.GridSpecFromSubplotSpec(n_rrows, n_rcols,  subplot_spec=gs[1], hspace=0.04, wspace=0.04)
+    gs_cat = gridspec.GridSpecFromSubplotSpec(
+        n_cat_rows, n_cat_cols, subplot_spec=gs[0],
+        hspace=HSPACE, wspace=WSPACE,
+    )
+    gs_smp = gridspec.GridSpecFromSubplotSpec(
+        n_rrows, n_rcols, subplot_spec=gs[1],
+        hspace=HSPACE, wspace=WSPACE,
+    )
 
-    # ── Left panel: one row per perturbation ────────────────────────────────────
-    for i, key in enumerate(_ORDER):
-        ax = fig.add_subplot(gs_left[i])
+    # ── Left panel: perturbation catalogue ────────────────────────────────────
+    for idx, key in enumerate(_ORDER):
+        row, col = divmod(idx, n_cat_cols)
+        ax = fig.add_subplot(gs_cat[row, col])
+
+        if key is None:          # empty cell
+            ax.axis("off")
+            continue
+
         ax.set_facecolor(_BG.get(key, "white"))
         ax.imshow(_render_single(key, fonts), cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.set_xticks([])
@@ -149,35 +147,39 @@ def make_paper_figure():
             sp.set_linewidth(0.3)
             sp.set_color("#ccc")
 
-        # Coloured category dot  ·  label text
-        ax.plot(-0.015, 0.5, "o", ms=3.5,
-                color=_ACCENT.get(key, "#aaa"),
-                transform=ax.transAxes, clip_on=False)
-        ax.text(-0.032, 0.5, _LABEL[key],
-                transform=ax.transAxes,
-                ha="right", va="center",
-                fontsize=6.5, color="#222",
-                fontstyle="italic" if key == "clean" else "normal")
+        label = _LABEL[key]
+        ax.set_title(
+            f'text: "{DEMO_WORD}" | perturbation: {label}',
+            fontsize=6.5, pad=2, loc="left",
+            fontstyle="italic" if key == "clean" else "normal",
+        )
 
-    # ── Right panel: random sample grid ────────────────────────────────────────
+    # ── Right panel: random dataset samples ───────────────────────────────────
     for j in range(n_rrows * n_rcols):
         row, col = divmod(j, n_rcols)
-        ax = fig.add_subplot(gs_right[row, col])
-        ax.imshow(_render_random(5000 + j, fonts), cmap="gray", vmin=0, vmax=255, aspect="auto")
-        ax.axis("off")
+        ax = fig.add_subplot(gs_smp[row, col])
+        arr, text, active = _render_random(5000 + j, fonts)
+        ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for sp in ax.spines.values():
+            sp.set_linewidth(0.3)
+            sp.set_color("#ccc")
 
-    # ── Panel headers ───────────────────────────────────────────────────────────
-    # Positions approximated from gridspec geometry (left=0.155, right=0.99,
-    # width_ratios=[1.0, 0.70], wspace=0.07).
-    # Left panel images span roughly [0.155, 0.615]; right spans [0.660, 0.990].
-    fig.text(0.385, 0.945, "Individual perturbations",
+        distortion_str = ", ".join(sorted(active)) if active else "none"
+        ax.set_title(
+            f'text: "{text}" | perturbations: {distortion_str}',
+            fontsize=6.5, pad=2, loc="left",
+        )
+
+    # ── Panel headers ──────────────────────────────────────────────────────────
+    fig.text(0.255, 0.945, "Individual perturbations",
              ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
-    fig.text(0.825, 0.945, "Dataset samples",
+    fig.text(0.745, 0.945, "Dataset samples",
              ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
 
-    # Thin vertical separator between panels
-    line_x = 0.638
-    fig.add_artist(plt.Line2D([line_x, line_x], [0.01, 0.93],
+    # Thin vertical separator
+    fig.add_artist(plt.Line2D([0.505, 0.505], [0.01, 0.92],
                                transform=fig.transFigure,
                                color="#ccc", linewidth=0.6, zorder=10))
 
