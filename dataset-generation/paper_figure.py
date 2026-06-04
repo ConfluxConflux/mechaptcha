@@ -159,7 +159,7 @@ def make_paper_figure():
             sp.set_color("#ccc")
 
         label = _LABEL[key]
-        title = f'text: "{DEMO_WORD}" | perturbation: {label}'
+        title = f'perturbation: {label}  |  text: "{DEMO_WORD}"'
         kw = {**_label_kw, "transform": ax.transAxes,
               "fontstyle": "italic" if key == "clean" else "normal"}
         ax.text(0.02, 0.97, title, **kw)
