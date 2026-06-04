@@ -86,7 +86,7 @@ def make_qa():
         ax = axes[n_stacked + 1 + j]
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
-        ax.set_title(f'text: "{text}" | distortion: {label}',
+        ax.set_title(f'text: "{text}" | perturbation: {label}',
                      fontsize=7, pad=2, loc="left")
     out = Path("qa_stacked.png")
     plt.savefig(out, dpi=150, bbox_inches="tight")
