@@ -348,7 +348,7 @@ def plot_arch(
 
     # ── Legend note ───────────────────────────────────────────────────────────
     ax.text(4.8, 0.32,
-            "Box color = avg probe accuracy (distortions only)  ·  "
+            "Box color = avg probe accuracy (perturbations only)  ·  "
             "Circles = logistic regression: can it separate batch A from batch B?\n"
             "Brown = raw pixel probe  ·  Red = intermediate layer probes  ·  Green = logit probe",
             ha="center", va="center", fontsize=7.5, color="#333",
