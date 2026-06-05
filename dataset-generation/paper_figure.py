@@ -108,7 +108,7 @@ def make_paper_figure():
     n_cat  = len(_ORDER)
     n_rrows = 14
 
-    fig = plt.figure(figsize=(8.5, 28.0), facecolor="white")
+    fig = plt.figure(figsize=(8.5, 20.0), facecolor="white")
 
     gs = gridspec.GridSpec(
         1, 2, figure=fig,
