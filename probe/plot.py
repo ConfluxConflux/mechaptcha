@@ -40,13 +40,15 @@ def _get_acc(results: AllResults, exp: str, layer: str) -> float:
 
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
-    "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
+    "Line artifact":     ["wavy_line", "easy_line", "hard_line", "two_lines"],
+    "Geometric warp":    ["rotation", "wave"],
     "Font style":        ["bold", "italic"],
     "Controls":          ["dumb_control", "variation_control"],
 }
 _PALETTES: dict[str, list[str]] = {
     "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
-    "Geometric":         ["#d62728", "#ff9896", "#e07070", "#9467bd", "#c5b0d5", "#8c5294"],
+    "Line artifact":     ["#8B1A1A", "#C0392B", "#E05555", "#F4AAAA"],
+    "Geometric warp":    ["#7b2fa3", "#c5b0d5"],
     "Font style":        ["#2ca02c", "#98df8a"],
     "Controls":          ["#7f7f7f", "#bdbdbd"],
 }
