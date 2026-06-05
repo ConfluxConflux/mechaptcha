@@ -7,7 +7,7 @@ from pathlib import Path
 # Perturbation examples to display: (experiment_dir, display_label)
 _EXAMPLES = [
     ("easy_line",   "Horizontal line"),
-    ("salt_pepper", "Salt & pepper"),
+    ("salt_pepper", "salt-and-pepper noise"),
     ("italic",      "Italic font"),
     ("rotation",    "Rotation"),
     ("blur",        "Blur"),
