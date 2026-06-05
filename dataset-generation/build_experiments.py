@@ -24,7 +24,7 @@ from experiment_hf import (
     preflight_experiment_hf_upload,
     push_experiments_to_hub,
 )
-from training.distortions import DISTORTIONS
+from training.distortions import DISTORTIONS, RENDER_JITTER_KEYS
 from training.experiment import (
     generate_controlled,
     generate_dumb_control,
