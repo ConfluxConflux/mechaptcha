@@ -44,22 +44,22 @@ _ORDER = [
     "char_jitter", "spacing_jitter",
 ]
 
-# Subtle pastel group backgrounds
-_BG = {
-    "clean":          "#ffffff",
-    "easy_line":      "#eef2ff",
-    "hard_line":      "#eef2ff",
-    "wavy_line":      "#eef2ff",
-    "two_lines":      "#eef2ff",
-    "blur":           "#fff5ec",
-    "dots":           "#fff5ec",
-    "salt_pepper":    "#fff5ec",
-    "wave":           "#edfff5",
-    "rotation":       "#edfff5",
-    "italic":         "#fffbec",
-    "bold":           "#fffbec",
-    "char_jitter":    "#f8f0ff",
-    "spacing_jitter": "#f8f0ff",
+# Border colour by category (matches chart palette)
+_CAT_COLOR = {
+    "clean":          "#888888",
+    "easy_line":      "#C0392B",
+    "hard_line":      "#C0392B",
+    "wavy_line":      "#C0392B",
+    "two_lines":      "#C0392B",
+    "blur":           "#1f77b4",
+    "dots":           "#1f77b4",
+    "salt_pepper":    "#1f77b4",
+    "wave":           "#7b2fa3",
+    "rotation":       "#7b2fa3",
+    "italic":         "#2ca02c",
+    "bold":           "#2ca02c",
+    "char_jitter":    "#7f7f7f",
+    "spacing_jitter": "#7f7f7f",
 }
 
 
