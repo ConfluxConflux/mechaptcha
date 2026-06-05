@@ -154,12 +154,12 @@ def make_paper_figure():
         ax.set_title(label, fontsize=7, pad=3, loc="left", color="#555555")
 
     # ── Panel headers ─────────────────────────────────────────────────────────
-    fig.text(0.26, 0.965, "Perturbation catalogue",
-             ha="center", va="bottom", fontsize=10, fontweight="bold", color="#222")
-    fig.text(0.74, 0.965, "Dataset samples",
-             ha="center", va="bottom", fontsize=10, fontweight="bold", color="#222")
+    fig.text(0.26, 0.978, "Perturbation catalogue",
+             ha="center", va="bottom", fontsize=12, fontweight="bold", color="#222")
+    fig.text(0.74, 0.978, "Dataset samples",
+             ha="center", va="bottom", fontsize=12, fontweight="bold", color="#222")
 
-    fig.add_artist(plt.Line2D([0.515, 0.515], [0.01, 0.955],
+    fig.add_artist(plt.Line2D([0.515, 0.515], [0.005, 0.978],
                                transform=fig.transFigure,
                                color="#dddddd", linewidth=1.0, zorder=10))
 
