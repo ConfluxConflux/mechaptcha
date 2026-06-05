@@ -166,23 +166,33 @@ ax.text(dot_x + 0.18, legend_y,
         ha="left", va="center", fontsize=6.2,
         color=C["probe"], fontstyle="italic")
 
-# ── Colour legend (layer types) ────────────────────────────────────────────────
+# ── Colour legend (layer types) — 2 × 2 grid, horizontal pairs ───────────────
 swatch_items = [
-    (C["conv_c"],  "Conv block  (Conv + ReLU + MaxPool)"),
+    (C["conv_c"],  "Conv block"),
     (C["pool_c"],  "Pooling"),
     (C["embed_c"], "FC embedding"),
     (C["out_c"],   "Output heads"),
 ]
-swatch_y = legend_y - 0.24
-swatch_dx = 0.14
+col_gap   = BOX_W / 2        # horizontal distance between left edges of the two columns
+sw_w, sw_h = 0.10, 0.13
+sw_dx = 0.14                 # text offset from swatch left edge
+row_gap = 0.21               # vertical distance between row centres
+
+sx0 = CX - BOX_W / 2        # left edge of left column
+sx1 = sx0 + col_gap          # left edge of right column
+
 for j, (col, label) in enumerate(swatch_items):
-    sy = swatch_y - j * 0.195
+    col_idx = j % 2
+    row_idx = j // 2
+    sx = sx0 if col_idx == 0 else sx1
+    sy = legend_y - 0.24 - row_idx * row_gap
+
     ax.add_patch(mpatches.FancyBboxPatch(
-        (dot_x, sy - 0.065), 0.10, 0.13,
+        (sx, sy - sw_h / 2), sw_w, sw_h,
         boxstyle="round,pad=0.01",
         facecolor=col, edgecolor=C["border"], linewidth=0.5, zorder=4,
     ))
-    ax.text(dot_x + swatch_dx, sy, label,
+    ax.text(sx + sw_dx, sy, label,
             ha="left", va="center", fontsize=5.5, color=C["sub"])
 
 fig.savefig(OUT, dpi=220, bbox_inches="tight", facecolor=C["bg"])
