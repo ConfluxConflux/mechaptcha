@@ -139,10 +139,11 @@ def main() -> None:
         raise RuntimeError("No valid fonts found.")
     print(f"  {len(fonts)} fonts loaded")
 
-    distortions_to_run = args.distortions if args.distortions else list(DISTORTIONS.keys())
-    invalid = set(distortions_to_run) - set(DISTORTIONS.keys())
+    all_valid = set(DISTORTIONS.keys()) | RENDER_JITTER_KEYS
+    distortions_to_run = args.distortions if args.distortions else sorted(all_valid)
+    invalid = set(distortions_to_run) - all_valid
     if invalid:
-        raise ValueError(f"Unknown distortion keys: {invalid}. Valid: {sorted(DISTORTIONS.keys())}")
+        raise ValueError(f"Unknown distortion keys: {invalid}. Valid: {sorted(all_valid)}")
 
     print(f"\nGenerating {args.n:,} pairs each for:")
     print(f"  Controls: dumb_control, variation_control")
