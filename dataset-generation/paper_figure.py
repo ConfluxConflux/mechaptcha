@@ -37,9 +37,9 @@ _LABEL = {
 # Display order for the single-column catalogue
 _ORDER = [
     "clean",
-    "easy_line", "hard_line", "wavy_line", "two_lines",
     "blur", "dots", "salt_pepper",
     "wave", "rotation",
+    "easy_line", "hard_line", "wavy_line", "two_lines",
     "italic", "bold",
     "char_jitter", "spacing_jitter",
 ]
