@@ -73,7 +73,7 @@ _ARCH_ORDER = [
 ]
 
 _PCA_EXPS = [
-    ("salt_pepper", "Salt & pepper  (99% → 60%)"),
+    ("salt_pepper", "salt-and-pepper noise  (99% → 60%)"),
     ("italic",      "Italic font  (builds: 92% → 99%)"),
     ("rotation",    "Rotation  (stays weak: 76–83%)"),
 ]
