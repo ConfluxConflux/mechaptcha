@@ -22,6 +22,7 @@ _DISPLAY_NAMES: dict[str, str] = {
     "wave":             "letter wave",
     "easy_line":        "horizontal line",
     "hard_line":        "angled line",
+    "salt_pepper":      "salt-and-pepper noise",
     "dumb_control":     "same-data control",
     "variation_control": "same-distribution control",
 }
