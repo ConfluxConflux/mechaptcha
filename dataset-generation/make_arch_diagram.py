@@ -31,7 +31,7 @@ C = dict(
 
 # ── Figure geometry (inches = data units) ─────────────────────────────────────
 FIG_W   = 3.5
-FIG_H   = 7.6
+FIG_H   = 7.0
 CX      = FIG_W / 2
 
 BOX_W   = 2.75
