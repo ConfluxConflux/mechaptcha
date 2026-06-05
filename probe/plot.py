@@ -71,7 +71,7 @@ _ARCH_LAYER_HEIGHTS = {
 }
 _ARCH_ORDER = [
     "salt_pepper", "blur", "dots", "bold", "italic",
-    "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
+    "wavy_line", "easy_line", "hard_line", "two_lines", "rotation", "wave",
 ]
 
 _PCA_EXPS = [
