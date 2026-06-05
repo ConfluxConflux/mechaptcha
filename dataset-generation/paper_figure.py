@@ -108,22 +108,22 @@ def make_paper_figure():
     n_cat  = len(_ORDER)
     n_rrows = 14
 
-    fig = plt.figure(figsize=(8.0, 7.5), facecolor="white")
+    fig = plt.figure(figsize=(8.5, 28.0), facecolor="white")
 
     gs = gridspec.GridSpec(
         1, 2, figure=fig,
         width_ratios=[1.0, 1.0],
         left=0.01, right=0.99,
-        top=0.94, bottom=0.01,
+        top=0.975, bottom=0.005,
         wspace=0.10,
     )
     gs_cat = gridspec.GridSpecFromSubplotSpec(
         n_cat, 1, subplot_spec=gs[0],
-        hspace=0.55,
+        hspace=0.18,
     )
     gs_smp = gridspec.GridSpecFromSubplotSpec(
         n_rrows, 1, subplot_spec=gs[1],
-        hspace=0.55,
+        hspace=0.18,
     )
 
     # ── Left panel: perturbation catalogue ───────────────────────────────────
