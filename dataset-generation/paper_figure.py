@@ -105,84 +105,63 @@ def make_paper_figure():
     print("Loading fonts...")
     fonts = load_fonts(FONT_DIR)
 
-    n_cat = len(_ORDER)   # 14 rows, single column
-    n_rcols = 1
-    n_rrows = 14          # one row per sample, matches left column height
+    n_cat  = len(_ORDER)
+    n_rrows = 14
 
-    # hspace provides the gap above each image row for the set_title label
-    HSPACE = 0.35
-    WSPACE = 0.06
+    fig = plt.figure(figsize=(8.0, 7.5), facecolor="white")
 
-    # Taller figure reduces the horizontal squish in the left single-column panel
-    fig = plt.figure(figsize=(7.0, 6.0), facecolor="white")
-
-    # ── Outer layout: [catalogue | samples] ────────────────────────────────────
-    # Left panel is wider (single column needs room for long labels like
-    # "text: "chars" | perturbation: spacing jitter" ≈ 1.9" at 7pt).
     gs = gridspec.GridSpec(
         1, 2, figure=fig,
-        width_ratios=[1.2, 1.0],
+        width_ratios=[1.0, 1.0],
         left=0.01, right=0.99,
-        top=0.93, bottom=0.01,
-        wspace=0.06,
+        top=0.94, bottom=0.01,
+        wspace=0.10,
     )
     gs_cat = gridspec.GridSpecFromSubplotSpec(
         n_cat, 1, subplot_spec=gs[0],
-        hspace=HSPACE,
+        hspace=0.55,
     )
     gs_smp = gridspec.GridSpecFromSubplotSpec(
         n_rrows, 1, subplot_spec=gs[1],
-        hspace=HSPACE,
+        hspace=0.55,
     )
 
-    # ── Left panel: perturbation catalogue (single column) ────────────────────
+    # ── Left panel: perturbation catalogue ───────────────────────────────────
     for i, key in enumerate(_ORDER):
         ax = fig.add_subplot(gs_cat[i])
-        ax.set_facecolor(_BG.get(key, "white"))
+        ax.set_facecolor("white")
         ax.imshow(_render_single(key, fonts), cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.set_xticks([])
         ax.set_yticks([])
+        color = _CAT_COLOR[key]
         for sp in ax.spines.values():
-            sp.set_linewidth(0.3)
-            sp.set_color("#ccc")
+            sp.set_linewidth(1.8)
+            sp.set_color(color)
+        ax.set_title(_LABEL[key], fontsize=8, pad=3, loc="left",
+                     color=color, fontweight="bold")
 
-        # Full qa_stacked-style label — fits easily in the ~3.5"-wide single-column cell
-        label = _LABEL[key]
-        ax.set_title(
-            f'text: "{DEMO_WORD}" | perturbation: {label}',
-            fontsize=7, pad=2, loc="left",
-            fontstyle="italic" if key == "clean" else "normal",
-        )
-
-    # ── Right panel: random dataset samples ───────────────────────────────────
-    for j in range(n_rrows * n_rcols):
-        row, col = divmod(j, n_rcols)
-        ax = fig.add_subplot(gs_smp[row, col])
+    # ── Right panel: random dataset samples ──────────────────────────────────
+    for j in range(n_rrows):
+        ax = fig.add_subplot(gs_smp[j])
         arr, text, active = _render_random(5000 + j, fonts)
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255, aspect="auto")
         ax.set_xticks([])
         ax.set_yticks([])
         for sp in ax.spines.values():
-            sp.set_linewidth(0.3)
-            sp.set_color("#ccc")
+            sp.set_linewidth(0.8)
+            sp.set_color("#aaaaaa")
+        label = ", ".join(_LABEL.get(k, k) for k in sorted(active)) if active else "none"
+        ax.set_title(label, fontsize=7, pad=3, loc="left", color="#555555")
 
-        distortion_str = ", ".join(sorted(active)) if active else "none"
-        ax.set_title(
-            f'text: "{text}" | perturbations: {distortion_str}',
-            fontsize=7, pad=2, loc="left",
-        )
+    # ── Panel headers ─────────────────────────────────────────────────────────
+    fig.text(0.26, 0.965, "Perturbation catalogue",
+             ha="center", va="bottom", fontsize=10, fontweight="bold", color="#222")
+    fig.text(0.74, 0.965, "Dataset samples",
+             ha="center", va="bottom", fontsize=10, fontweight="bold", color="#222")
 
-    # ── Panel headers ──────────────────────────────────────────────────────────
-    # Left panel spans ~[0.01, 0.555]; right spans ~[0.585, 0.99]
-    fig.text(0.283, 0.965, "Individual perturbations",
-             ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
-    fig.text(0.790, 0.965, "Dataset samples",
-             ha="center", va="bottom", fontsize=8, fontweight="bold", color="#333")
-
-    # Thin vertical separator
-    fig.add_artist(plt.Line2D([0.560, 0.560], [0.01, 0.94],
+    fig.add_artist(plt.Line2D([0.515, 0.515], [0.01, 0.955],
                                transform=fig.transFigure,
-                               color="#ccc", linewidth=0.6, zorder=10))
+                               color="#dddddd", linewidth=1.0, zorder=10))
 
     out = Path("paper_figure.png")
     fig.savefig(out, dpi=300, bbox_inches="tight", facecolor="white")
