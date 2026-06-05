@@ -153,47 +153,6 @@ for i in range(N):
             ha="left", va="center", fontsize=5.5, color=C["probe"],
             fontstyle="italic", zorder=5)
 
-# ── Legend ────────────────────────────────────────────────────────────────────
-last_probe_y = box_top(N - 1) - BOX_H - GAP / 2
-legend_y = last_probe_y - 0.30
-
-dot_x = CX - BOX_W / 2
-ax.plot(dot_x, legend_y, "o",
-        ms=PROBE_MS * 0.9, color=C["probe"],
-        mec="white", mew=0.8, zorder=5)
-ax.text(dot_x + 0.18, legend_y,
-        "= linear probe tap-point",
-        ha="left", va="center", fontsize=6.2,
-        color=C["probe"], fontstyle="italic")
-
-# ── Colour legend (layer types) — 2 × 2 grid, horizontal pairs ───────────────
-swatch_items = [
-    (C["conv_c"],  "Conv block"),
-    (C["pool_c"],  "Pooling"),
-    (C["embed_c"], "FC embedding"),
-    (C["out_c"],   "Output heads"),
-]
-col_gap   = BOX_W / 2        # horizontal distance between left edges of the two columns
-sw_w, sw_h = 0.10, 0.13
-sw_dx = 0.14                 # text offset from swatch left edge
-row_gap = 0.21               # vertical distance between row centres
-
-sx0 = CX - BOX_W / 2        # left edge of left column
-sx1 = sx0 + col_gap          # left edge of right column
-
-for j, (col, label) in enumerate(swatch_items):
-    col_idx = j % 2
-    row_idx = j // 2
-    sx = sx0 if col_idx == 0 else sx1
-    sy = legend_y - 0.24 - row_idx * row_gap
-
-    ax.add_patch(mpatches.FancyBboxPatch(
-        (sx, sy - sw_h / 2), sw_w, sw_h,
-        boxstyle="round,pad=0.01",
-        facecolor=col, edgecolor=C["border"], linewidth=0.5, zorder=4,
-    ))
-    ax.text(sx + sw_dx, sy, label,
-            ha="left", va="center", fontsize=5.5, color=C["sub"])
 
 fig.savefig(OUT, dpi=220, bbox_inches="tight", facecolor=C["bg"])
 plt.close(fig)
