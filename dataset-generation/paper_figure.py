@@ -25,7 +25,7 @@ _LABEL = {
     "two_lines":      "two lines",
     "blur":           "blur",
     "dots":           "dots",
-    "salt_pepper":    "salt & pepper",
+    "salt_pepper":    "salt-and-pepper noise",
     "wave":           "wave",
     "rotation":       "rotation",
     "italic":         "italic",
