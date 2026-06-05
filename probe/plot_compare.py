@@ -30,7 +30,7 @@ _FULL_LAYERS  = ["input"] + _HOOK_LAYERS + ["logits"]
 _FULL_LABELS  = ["input\n(pixels)", "cb0", "cb1", "cb2", "cb3", "pool", "embed", "logits\n(output)"]
 
 _ORDER = ["salt_pepper", "blur", "dots", "bold", "italic",
-          "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
+          "wavy_line", "easy_line", "hard_line", "two_lines", "rotation", "wave",
           "dumb_control", "variation_control"]
 
 _DISPLAY_NAMES: dict[str, str] = {
