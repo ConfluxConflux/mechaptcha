@@ -31,11 +31,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from dino.config import DinoConfig
+from dino.hf_upload import preflight_hf_upload, upload as hf_upload
 from dino.model import DinoCaptchaModel, build_transform, save_checkpoint
 from train.model import CaptchaModelConfig
 from train.scripts.config import TrainConfig
 from train.scripts.dataset_load import load_mechaptcha_datasets
 from train.scripts.evaluate import loss_fn, metric_counts
+from train.scripts.hf_upload import WandbRunInfo
 
 
 def _parse_args() -> argparse.Namespace:
@@ -89,6 +91,19 @@ def _parse_args() -> argparse.Namespace:
 
     p.add_argument("--output", type=Path, default=Path("dino_runs/dinov2-small/best.pt"),
                    help="Checkpoint path (saves LoRA adapters + heads + config).")
+    p.add_argument("--no-upload-hf", action="store_false", dest="upload_hf",
+                   help="Skip uploading the checkpoint to HuggingFace (upload is on by default).")
+
+    # W&B
+    p.add_argument("--wandb-project", default="mechaptcha-dino", dest="wandb_project",
+                   help="W&B project name.")
+    p.add_argument("--wandb-entity", default=None, dest="wandb_entity",
+                   help="W&B entity (team or username). Defaults to your W&B default.")
+    p.add_argument("--wandb-run-name", default=None, dest="wandb_run_name",
+                   help="W&B run name. Defaults to the output directory name (e.g. dinov2-small-lora).")
+    p.add_argument("--wandb-mode", default="online", dest="wandb_mode",
+                   choices=("online", "offline", "disabled"),
+                   help="W&B logging mode. Use 'disabled' to skip W&B entirely.")
     return p.parse_args()
 
 
@@ -117,11 +132,50 @@ def _evaluate(model: DinoCaptchaModel, loader: DataLoader, device: torch.device)
     }
 
 
+def _default_run_name(args: argparse.Namespace) -> str:
+    """Derive a W&B run name from the output path, e.g. dino_runs/dinov2-small-lora/best.pt -> dinov2-small-lora."""
+    output_dir = args.output if args.output.is_dir() else args.output.parent
+    return output_dir.name
+
+
 def main() -> None:
     args = _parse_args()
     torch.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
+
+    output_dir = args.output if args.output.is_dir() else args.output.parent
+
+    # ── W&B ──────────────────────────────────────────────────────────────────
+    run = None
+    if args.wandb_mode != "disabled":
+        import wandb
+        run = wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.wandb_run_name or _default_run_name(args),
+            mode=args.wandb_mode,
+            config={
+                "backbone": args.backbone,
+                "model_name": args.model_name,
+                "lora_r": args.lora_r,
+                "lora_alpha": args.lora_alpha,
+                "freeze_backbone": args.freeze_backbone,
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "learning_rate": args.learning_rate,
+                "train_size": args.train_size,
+                "val_size": args.val_size,
+                "seed": args.seed,
+            },
+        )
+
+    if args.upload_hf:
+        try:
+            info = preflight_hf_upload(output_dir)
+            print(f"Verified HuggingFace repo access: {info.repo_url}")
+        except Exception as exc:
+            raise RuntimeError(f"HuggingFace upload preflight failed: {exc}") from exc
 
     dino_config = DinoConfig(
         backbone=args.backbone,
@@ -198,11 +252,15 @@ def main() -> None:
 
             step += 1
             pbar.set_postfix(loss=f"{loss.item():.3f}", lr=f"{lr:.1e}")
+            if run is not None:
+                run.log({"train/loss": loss.item(), "train/lr": lr}, step=step)
 
             if step % args.eval_every_steps == 0:
                 metrics = _evaluate(model, val_loader, device)
                 tqdm.write(f"  step {step}: val char_acc={metrics['char_acc']:.3f} "
                            f"seq_acc={metrics['seq_acc']:.3f}")
+                if run is not None:
+                    run.log({"val/char_acc": metrics["char_acc"], "val/seq_acc": metrics["seq_acc"]}, step=step)
                 if metrics["seq_acc"] > best_seq_acc:
                     best_seq_acc = metrics["seq_acc"]
                     save_checkpoint(model, args.output)
@@ -217,9 +275,11 @@ def main() -> None:
         print(f"Saved final checkpoint -> {args.output}")
     best_seq_acc = max(best_seq_acc, metrics["seq_acc"])
     print(f"Best val seq_acc: {best_seq_acc:.3f}")
+    if run is not None:
+        run.log({"val/final_char_acc": metrics["char_acc"], "val/final_seq_acc": metrics["seq_acc"],
+                 "val/best_seq_acc": best_seq_acc}, step=step)
 
     import json
-    from dataclasses import asdict
     run_metrics = {
         "val_char_acc": metrics["char_acc"],
         "val_seq_acc": metrics["seq_acc"],
@@ -235,6 +295,17 @@ def main() -> None:
     metrics_path = args.output.with_name("metrics.json")
     metrics_path.write_text(json.dumps(run_metrics, indent=2))
     print(f"Metrics saved to {metrics_path}")
+
+    wandb_info = WandbRunInfo(
+        name=getattr(run, "name", None),
+        url=getattr(run, "url", None),
+    )
+    if run is not None:
+        run.finish()
+
+    if args.upload_hf:
+        upload_info = hf_upload(output_dir, run_metrics, wandb_run=wandb_info)
+        print(f"Uploaded to HuggingFace: {upload_info.repo_url}")
 
 
 if __name__ == "__main__":
