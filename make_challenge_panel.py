@@ -50,11 +50,14 @@ print(f"Found: {list(found.keys())}")
 ORDER = ["pzxpo", "xxweq", "cjhwq", "hqsir"]
 items = [found[t] for t in ORDER if t in found]
 
-# ── Figure: 2×2 grid ──────────────────────────────────────────────────────────
-FIG_W = 3.5
-fig, axes = plt.subplots(2, 2, figsize=(FIG_W, 2.2),
-                         gridspec_kw={"hspace": 0.55, "wspace": 0.06})
+# ── Figure: 2×2 grid (full text width — spans both columns) ───────────────────
+FIG_W = 7.0
+fig, axes = plt.subplots(2, 2, figsize=(FIG_W, 3.2),
+                         gridspec_kw={"hspace": 0.28, "wspace": 0.06})
 fig.patch.set_facecolor("white")
+
+# Perturbations to skip when labelling (control conditions, not real distortions)
+SKIP_PERTURBS = {"same-data control", "same-distribution control", "char jitter"}
 
 for ax, example in zip(axes.flat, items):
     img = example["image"].convert("L")
@@ -63,12 +66,13 @@ for ax, example in zip(axes.flat, items):
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():
-        spine.set_linewidth(0.4)
-        spine.set_edgecolor("#999")
+        spine.set_linewidth(0.5)
+        spine.set_edgecolor("#aaa")
 
-    perturbs = [PERTURBATION_DISPLAY.get(c, c) for c in bool_cols if example.get(c)]
-    label = ", ".join(perturbs) if perturbs else "no perturbation"
-    ax.set_title(label, fontsize=5.8, color="#333", pad=2.5, fontstyle="italic")
+    perturbs = [PERTURBATION_DISPLAY.get(c, c) for c in bool_cols
+                if example.get(c) and PERTURBATION_DISPLAY.get(c, c) not in SKIP_PERTURBS]
+    label = ", ".join(perturbs[:4]) if perturbs else "no perturbation"
+    ax.set_xlabel(label, fontsize=7, color="#444", labelpad=4, fontstyle="italic")
 
 fig.savefig(OUT, dpi=250, bbox_inches="tight", facecolor="white")
 plt.close(fig)
