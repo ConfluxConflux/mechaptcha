@@ -42,8 +42,10 @@ CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
     ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
     ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
+    ("DINOv2-B-frozen",    REPO_ROOT / "dino_results/dinov2-base-frozen/results.json",            REPO_ROOT / "dino_results/dinov2-base-frozen/activations"),
     ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",              REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
     ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
+    ("CLIP-B-frozen",      REPO_ROOT / "dino_results/clip-vit-base-frozen/results.json",          REPO_ROOT / "dino_results/clip-vit-base-frozen/activations"),
     ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
     ("DINOv2-S",           REPO_ROOT / "dino_results/dinov2-small/results.json",                   REPO_ROOT / "dino_results/dinov2-small/activations"),
     ("DINOv2-B",           REPO_ROOT / "dino_results/dinov2-base/results.json",                    REPO_ROOT / "dino_results/dinov2-base/activations"),
@@ -57,8 +59,10 @@ def _probe_results(subdir: str) -> dict[str, Path]:
         "DINOv2-S-lora": REPO_ROOT / f"dino_results/dinov2-small-lora/{subdir}/results.json",
         "DINOv2-S-frozen":REPO_ROOT / f"dino_results/dinov2-small-frozen/{subdir}/results.json",
         "DINOv2-B-lora": REPO_ROOT / f"dino_results/dinov2-base-lora/{subdir}/results.json",
+        "DINOv2-B-frozen": REPO_ROOT / f"dino_results/dinov2-base-frozen/{subdir}/results.json",
         "DINOv2-L-lora": REPO_ROOT / f"dino_results/dinov2-large-lora/{subdir}/results.json",
         "CLIP-B-lora":   REPO_ROOT / f"dino_results/clip-vit-base-lora/{subdir}/results.json",
+        "CLIP-B-frozen": REPO_ROOT / f"dino_results/clip-vit-base-frozen/{subdir}/results.json",
         "ViT-B-lora":    REPO_ROOT / f"dino_results/vit-base-supervised-lora/{subdir}/results.json",
     }
 
@@ -73,8 +77,10 @@ TRAINING_METRICS: dict[str, Path | dict] = {
     "DINOv2-S-frozen":  REPO_ROOT / "dino_runs/dinov2-small-frozen/metrics.json",
     "DINOv2-S-lora":    REPO_ROOT / "dino_runs/dinov2-small-lora/metrics.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_runs/dinov2-base-lora/metrics.json",
+    "DINOv2-B-frozen":  REPO_ROOT / "dino_runs/dinov2-base-frozen/metrics.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_runs/dinov2-large-lora/metrics.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_runs/clip-vit-base-lora/metrics.json",
+    "CLIP-B-frozen":    REPO_ROOT / "dino_runs/clip-vit-base-frozen/metrics.json",
     "ViT-B-lora":       REPO_ROOT / "dino_runs/vit-base-supervised-lora/metrics.json",
 }
 
@@ -83,8 +89,10 @@ TRANSCRIPTION_ACCURACY: dict[str, Path] = {
     "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/transcription_accuracy.json",
     "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/transcription_accuracy.json",
     "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/transcription_accuracy.json",
+    "DINOv2-B-frozen":  REPO_ROOT / "dino_results/dinov2-base-frozen/transcription_accuracy.json",
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
+    "CLIP-B-frozen":    REPO_ROOT / "dino_results/clip-vit-base-frozen/transcription_accuracy.json",
     "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
     "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/transcription_accuracy.json",
     "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/transcription_accuracy.json",

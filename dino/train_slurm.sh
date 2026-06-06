@@ -46,7 +46,7 @@ done
 if [[ -n "$CHECKPOINT" ]]; then
   SLUG="$(basename "$(dirname "$CHECKPOINT")")"
   PROBE_OUTPUT="dino_results/${SLUG}"
-  PROBE_PARTITION="${SLURM_JOB_PARTITION:-jag-standard},sc-loprio"
+  PROBE_PARTITION="${DINO_PROBE_PARTITION:-${SLURM_JOB_PARTITION:-jag-standard}}"
 
   PROBE_JOB=$(sbatch \
     --partition="$PROBE_PARTITION" \
