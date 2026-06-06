@@ -29,7 +29,7 @@ DISPLAY = {
     "dots":              "Dot noise",
     "salt_pepper":       r"Salt \& pepper",
     "wavy_line":         "Wavy line",
-    "easy_line":         "Horiz.\ line",
+    "easy_line":         r"Horiz.\ line",
     "hard_line":         "Angled line",
     "two_lines":         "Two lines",
     "rotation":          "Rotation",
