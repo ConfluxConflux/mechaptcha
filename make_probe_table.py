@@ -27,7 +27,7 @@ CATEGORIES: dict[str, list[str]] = {
 DISPLAY = {
     "blur":              "Blur",
     "dots":              "Dot noise",
-    "salt_pepper":       "Salt \& pepper",
+    "salt_pepper":       r"Salt \& pepper",
     "wavy_line":         "Wavy line",
     "easy_line":         "Horiz.\ line",
     "hard_line":         "Angled line",
