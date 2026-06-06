@@ -47,6 +47,7 @@ CANDIDATES: list[tuple[str, Path, Path | None]] = [
     ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
     ("CLIP-B-frozen",      REPO_ROOT / "dino_results/clip-vit-base-frozen/results.json",          REPO_ROOT / "dino_results/clip-vit-base-frozen/activations"),
     ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
+    ("ViT-B-frozen",       REPO_ROOT / "dino_results/vit-base-supervised-frozen/results.json",    REPO_ROOT / "dino_results/vit-base-supervised-frozen/activations"),
     ("DINOv2-S",           REPO_ROOT / "dino_results/dinov2-small/results.json",                   REPO_ROOT / "dino_results/dinov2-small/activations"),
     ("DINOv2-B",           REPO_ROOT / "dino_results/dinov2-base/results.json",                    REPO_ROOT / "dino_results/dinov2-base/activations"),
     ("CLIP-B",             REPO_ROOT / "dino_results/clip-vit-base/results.json",                  REPO_ROOT / "dino_results/clip-vit-base/activations"),
@@ -64,6 +65,7 @@ def _probe_results(subdir: str) -> dict[str, Path]:
         "CLIP-B-lora":   REPO_ROOT / f"dino_results/clip-vit-base-lora/{subdir}/results.json",
         "CLIP-B-frozen": REPO_ROOT / f"dino_results/clip-vit-base-frozen/{subdir}/results.json",
         "ViT-B-lora":    REPO_ROOT / f"dino_results/vit-base-supervised-lora/{subdir}/results.json",
+        "ViT-B-frozen":  REPO_ROOT / f"dino_results/vit-base-supervised-frozen/{subdir}/results.json",
     }
 
 MLP_RESULTS:    dict[str, Path] = _probe_results("mlp")
@@ -82,6 +84,7 @@ TRAINING_METRICS: dict[str, Path | dict] = {
     "CLIP-B-lora":      REPO_ROOT / "dino_runs/clip-vit-base-lora/metrics.json",
     "CLIP-B-frozen":    REPO_ROOT / "dino_runs/clip-vit-base-frozen/metrics.json",
     "ViT-B-lora":       REPO_ROOT / "dino_runs/vit-base-supervised-lora/metrics.json",
+    "ViT-B-frozen":     REPO_ROOT / "dino_runs/vit-base-supervised-frozen/metrics.json",
 }
 
 TRANSCRIPTION_ACCURACY: dict[str, Path] = {
@@ -94,6 +97,7 @@ TRANSCRIPTION_ACCURACY: dict[str, Path] = {
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
     "CLIP-B-frozen":    REPO_ROOT / "dino_results/clip-vit-base-frozen/transcription_accuracy.json",
     "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
+    "ViT-B-frozen":     REPO_ROOT / "dino_results/vit-base-supervised-frozen/transcription_accuracy.json",
     "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/transcription_accuracy.json",
     "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/transcription_accuracy.json",
     "CLIP-B":           REPO_ROOT / "dino_results/clip-vit-base/transcription_accuracy.json",

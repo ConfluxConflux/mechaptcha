@@ -4,28 +4,26 @@ This document defines the model labels used in `charts/` and how each model was 
 
 ## TLDR
 ### DINOv2
-- `dinov2-s`: [DINOv2-Small](https://huggingface.co/facebook/dinov2-small). Doesn't natively output captcha text, so to make it work we wrapped it with 5 character heads at the end (one for each output character) so a logits layer is produced. Those heads are random/untrained in the pre-trained only run, so the transcription accuracy is 0.0 (garbage). This serves as the basis for:
-	- `dinov2-s-frozen`: Dinov2-Small, no transformer weights changed and no lora adapters. We froze the backbone and trained only the transcript heads at the very end. In other words, it only learns how to recognize captcha text from existing pretrained features, it does not learn visual features.
-		- The [performance](./transcription_accuracy.csv) of this model on the CAPTCHA task is very bad [see line `DINOv2-S-frozen`].
-	- `dinov2-s-lora`: Dinov2-Small, with LoRA adapters *and* our character heads fine-tuned on the CAPTCHA transcription task. This model can adjust its visual features via the LoRA adapters, and it also trains the character heads at the end. This is a more flexible setup than `dinov2-s-frozen` and it [performs](./transcription_accuracy.csv) much better on the CAPTCHA task [see line `DINOv2-S-lora`] — 87% accuracy at recognizing all 5 letters.
-- `dinov2-b`: [DINOv2-Base](https://huggingface.co/facebook/dinov2-base). Same as dinov2-s, but at the base scale so 2x hidden dim size, 4x total params. 
-	- `dinov2-b-frozen`: this is currently running, no results yet. 
-	- `dinov2-b-lora`: same as the dinov2-s-lora, but larger
+- `dinov2-s`: [DINOv2-Small](https://huggingface.co/facebook/dinov2-small). It does not natively output CAPTCHA text, so the pipeline attaches 5 character heads at the end, one for each output character. Those heads are random/untrained in the pretrained-only run, so transcription accuracy is expected to be garbage. This is a representation-only baseline.
+- `dinov2-s-frozen`: DINOv2-Small with no transformer weights changed and no LoRA adapters. The backbone is frozen and only the transcription heads are trained. It learns how to recognize CAPTCHA text from existing pretrained features; it does not learn new visual features.
+- `dinov2-s-lora`: DINOv2-Small with LoRA adapters and character heads trained jointly on the CAPTCHA transcription task. This can adjust visual features via LoRA and performs much better on the task than `dinov2-s-frozen`.
+- `dinov2-b`: [DINOv2-Base](https://huggingface.co/facebook/dinov2-base). Same protocol as `dinov2-s`, but at Base scale.
+- `dinov2-b-frozen`: Same as `dinov2-s-frozen`, but larger.
+- `dinov2-b-lora`: Same as `dinov2-s-lora`, but larger.
 
 ### CLIP
-- `clip-b`: from [`openai/clip-vit-base-patch16`](https://huggingface.co/openai/clip-vit-base-patch16). Just like dino-v2, wrapped it with 5 character heads at the end, randomly initialized. 
-	- `clip-b-frozen`: take our `clip-b` with the 5 character heads, freeze the entire model except for our CAPTCHA character heads, and train only those for our task. Just like the Dino-v2 frozen variants.
-	- `clip-b-lora`: Same as dinov2 lora: train a lora adapter and our 5 character heads for the CAPTCHA task.
+- `clip-b`: [`openai/clip-vit-base-patch16`](https://huggingface.co/openai/clip-vit-base-patch16). CLIP is a vision-language model, but its vision tower is an encoder, not an image-to-text decoder. We attach 5 random/untrained CAPTCHA heads in this pretrained-only baseline, so task logits are not meaningful.
+- `clip-b-frozen`: CLIP-B vision tower frozen, CAPTCHA character heads trained.
+- `clip-b-lora`: CLIP-B vision tower with LoRA adapters and character heads trained jointly.
 
 ### ViT
-- `vit-b-lora`: supervised ViT model, based on the `vit_base_patch16_224` model from the [`timm` library](https://github.com/huggingface/pytorch-image-models). Just like our other lora models, we slapped on 5 character heads and trained those along with a LoRA adapter for the task. Performs [fairly well](./transcription_accuracy.csv), 82% accuracy.
-	- The point of this was as a control vs. Dino v2 and CLIP.
+- `vit-b-frozen`: supervised ImageNet ViT-B from `timm`, frozen backbone, CAPTCHA character heads trained.
+- `vit-b-lora`: supervised ImageNet ViT-B from `timm`, LoRA adapters and CAPTCHA character heads trained jointly. This is a control for pretraining objective versus DINOv2 and CLIP.
 
 ### CNN
-- `cnn`: We trained this from scratch on the CAPTCHA task. Custom CNN architecture with 5 character heads on the end. Quite accurate.
+- `cnn`: Custom CNN trained from scratch on the CAPTCHA task, including all convolution blocks, embedding layer, and character heads.
 
-
-NOTE: `charts/transcription_accuracy.csv` is **native model transcription accuracy**, but measured on the **probe/stress-test experiment images**, not on the original HF validation set. So expect results to be lower.
+NOTE: `charts/transcription_accuracy.csv` is CAPTCHA transcription accuracy measured on the **probe/stress-test experiment images**, not on the original HF validation set. For pretrained-only rows with random/untrained heads, this is a sanity check and should not be interpreted as native OCR ability.
 
 ## Task Setup
 
@@ -41,8 +39,10 @@ The chart probes are separate from the transcription task. They train classifier
 | `clip-b` | `dino_results/clip-vit-base/` | `openai/clip-vit-base-patch16` vision tower | No CAPTCHA task training | Nothing meaningful for the task; CAPTCHA heads are newly initialized and untrained | Use only as a pretrained visual representation baseline. Its transcription logits are expected to be garbage. |
 | `clip-b-frozen` | `dino_results/clip-vit-base-frozen/` | `openai/clip-vit-base-patch16` vision tower | Heads-only CAPTCHA training | Character heads only; CLIP vision tower stays frozen | Tests whether frozen pretrained CLIP-B vision features are enough for CAPTCHA reading with a lightweight readout. |
 | `clip-b-lora` | `dino_results/clip-vit-base-lora/` | `openai/clip-vit-base-patch16` vision tower | LoRA fine-tuned on CAPTCHA transcription | LoRA adapters plus character heads | Task-adapted CLIP baseline. Validation sequence accuracy recorded as `0.921`. |
+| `dinov2-b` | `dino_results/dinov2-base/` | `facebook/dinov2-base` | No CAPTCHA task training | Nothing meaningful for the task; CAPTCHA heads are newly initialized and untrained | Use only as a pretrained visual representation baseline. Its transcription logits are expected to be garbage. |
 | `dinov2-b-frozen` | `dino_results/dinov2-base-frozen/` | `facebook/dinov2-base` | Heads-only CAPTCHA training | Character heads only; DINOv2 backbone stays frozen | Base-sized analogue of `dinov2-s-frozen`. Tests whether frozen pretrained DINOv2-B features are enough for CAPTCHA reading. |
 | `dinov2-b-lora` | `dino_results/dinov2-base-lora/` | `facebook/dinov2-base` | LoRA fine-tuned on CAPTCHA transcription | LoRA adapters plus character heads | Task-adapted DINOv2-Base baseline. Validation sequence accuracy recorded as `0.939`. |
+| `dinov2-s` | `dino_results/dinov2-small/` | `facebook/dinov2-small` | No CAPTCHA task training | Nothing meaningful for the task; CAPTCHA heads are newly initialized and untrained | Use only as a pretrained visual representation baseline. Its transcription logits are expected to be garbage. |
 | `dinov2-s-frozen` | `dino_results/dinov2-small-frozen/` | `facebook/dinov2-small` | Heads-only CAPTCHA training | Character heads only; DINOv2 backbone stayed frozen | Tests whether frozen pretrained DINOv2-S features are enough for CAPTCHA reading. They were not: validation sequence accuracy recorded as `0.0`. |
 | `dinov2-s-lora` | `dino_results/dinov2-small-lora/` | `facebook/dinov2-small` | LoRA fine-tuned on CAPTCHA transcription | LoRA adapters plus character heads | Task-adapted DINOv2-Small baseline. Validation sequence accuracy recorded as `0.893`. |
 | `vit-b-frozen` | `dino_results/vit-base-supervised-frozen/` | `vit_base_patch16_224` from `timm` | Heads-only CAPTCHA training | Character heads only; supervised ImageNet ViT-B backbone stays frozen | Tests whether frozen supervised ImageNet ViT-B features are enough for CAPTCHA reading with a lightweight readout. |
@@ -58,11 +58,15 @@ The chart probes are separate from the transcription task. They train classifier
 
 `clip-b-lora` uses the same CLIP vision backbone, but trains LoRA adapters and character heads on the CAPTCHA transcription task.
 
+The CLIP retrieval protocol discussed separately would score image embeddings against candidate text embeddings. That is a different native-CLIP experiment and is not what these chart folders currently report.
+
 ### `dinov2-s-frozen` vs `dinov2-s-lora`
 
 `dinov2-s-frozen` freezes the pretrained DINOv2-Small transformer and trains only the small character heads. This asks whether the pretrained representation is already sufficient for the task with a lightweight readout.
 
 `dinov2-s-lora` trains LoRA adapters inside the DINOv2-Small transformer, in addition to the character heads. This lets the representation adapt to CAPTCHA transcription.
+
+The LoRA adapters and character heads are trained at the same time from the same transcription loss. We do not first train heads and then train LoRA.
 
 `dinov2-b-frozen` and `dinov2-b-lora` follow the same distinction at the DINOv2-Base scale.
 
@@ -71,6 +75,8 @@ The chart probes are separate from the transcription task. They train classifier
 `vit-b-frozen` freezes the supervised ImageNet ViT-B backbone and trains only the CAPTCHA character heads.
 
 `vit-b-lora` trains LoRA adapters inside the supervised ImageNet ViT-B transformer, in addition to the character heads.
+
+The ViT-B base model is not trained from scratch. It starts from the `timm` pretrained `vit_base_patch16_224` weights.
 
 ### Pretrained-only Vision Backbones
 
