@@ -69,14 +69,7 @@ for ax, example in zip(axes.flat, items):
         spine.set_linewidth(0.5)
         spine.set_edgecolor("#aaa")
 
-    # Only show perturbations that have a non-None display name
-    perturbs = [
-        PERTURBATION_DISPLAY[c]
-        for c in bool_cols
-        if example.get(c) and c in PERTURBATION_DISPLAY and PERTURBATION_DISPLAY[c] is not None
-    ]
-    label = ", ".join(perturbs[:4]) if perturbs else "no perturbation"
-    ax.set_xlabel(label, fontsize=7, color="#444", labelpad=4, fontstyle="italic")
+    pass
 
 fig.savefig(OUT, dpi=250, bbox_inches="tight", facecolor="white")
 plt.close(fig)
