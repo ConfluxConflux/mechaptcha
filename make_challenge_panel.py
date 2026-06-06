@@ -59,9 +59,6 @@ fig, axes = plt.subplots(2, 2, figsize=(FIG_W, 3.2),
                          gridspec_kw={"hspace": 0.28, "wspace": 0.06})
 fig.patch.set_facecolor("white")
 
-# Perturbations to skip when labelling (control conditions, not real distortions)
-SKIP_PERTURBS = {"same-data control", "same-distribution control", "char jitter"}
-
 for ax, example in zip(axes.flat, items):
     img = example["image"].convert("L")
     ax.imshow(img, cmap="gray", vmin=0, vmax=255, aspect="auto",
@@ -72,8 +69,12 @@ for ax, example in zip(axes.flat, items):
         spine.set_linewidth(0.5)
         spine.set_edgecolor("#aaa")
 
-    perturbs = [PERTURBATION_DISPLAY.get(c, c) for c in bool_cols
-                if example.get(c) and PERTURBATION_DISPLAY.get(c, c) not in SKIP_PERTURBS]
+    # Only show perturbations that have a non-None display name
+    perturbs = [
+        PERTURBATION_DISPLAY[c]
+        for c in bool_cols
+        if example.get(c) and c in PERTURBATION_DISPLAY and PERTURBATION_DISPLAY[c] is not None
+    ]
     label = ", ".join(perturbs[:4]) if perturbs else "no perturbation"
     ax.set_xlabel(label, fontsize=7, color="#444", labelpad=4, fontstyle="italic")
 
