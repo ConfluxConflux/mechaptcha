@@ -12,7 +12,7 @@ Per-model charts are written to charts/<slug>/:
 
 Collated charts (one subplot per model, plus cross-model comparisons) are written to charts/collated/:
 
-  heatmap.png, lines.png, full_layers.png, forgetting.png, categories.png
+  heatmap.png, lines.png, lines_wide.png, full_layers.png, forgetting.png, categories.png
   decodability_vs_depth.png, peak_vs_output.png
 
 Usage:  uv run python charts/make_charts.py
@@ -381,6 +381,19 @@ def _short_label(label: str) -> str:
     return label.split(" ")[0]
 
 
+def _compact_layer_label(label: str) -> str:
+    """Short tick labels for narrow, column-oriented plots."""
+    if label.startswith("block_"):
+        return "b" + label.split("_", 1)[1]
+    if label.startswith("conv_block_"):
+        return "cb" + label.rsplit("_", 1)[1]
+    if label == "embedding":
+        return "emb"
+    if label == "logits":
+        return "log"
+    return label
+
+
 def collate_plots(models: list, pgf: bool = False) -> None:
     """For each chart type, produce a single figure with one subplot per model."""
     if not models:
@@ -403,15 +416,51 @@ def collate_plots(models: list, pgf: bool = False) -> None:
     print(f"  collated/heatmap.png")
 
     # ── lines ─────────────────────────────────────────────────────────────────
+    # Column-oriented version for LaTeX documents. One model per row keeps each
+    # subplot readable after fitting the figure to a single column.
+    fig, axes = plt.subplots(n, 1, figsize=(6.8, max(2.8 * n, 4.5)), constrained_layout=True)
+    if n == 1:
+        axes = [axes]
+    legend_handles = None
+    legend_labels = None
+    for ax, (label, res, layers, _act) in zip(axes, models):
+        plot_lines(res, None, layers=layers, title=_short_label(label), ax=ax)
+        if legend_handles is None:
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+        if ax.legend_ is not None:
+            ax.legend_.remove()
+        tick_labels = [_compact_layer_label(t.get_text()) for t in ax.get_xticklabels()]
+        ax.set_xticklabels(tick_labels, rotation=0, ha="center", fontsize=7)
+        ax.set_xlabel("")
+    if len(axes) > 0:
+        axes[-1].set_xlabel("Layer")
+    if legend_handles and legend_labels:
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.005),
+            ncol=3,
+            frameon=True,
+            fontsize=7,
+            handlelength=1.6,
+            columnspacing=1.0,
+        )
+    fig.suptitle("Linear probe accuracy by layer — all models", fontsize=13)
+    _save(fig, out_dir / "lines.png", pgf)
+    plt.close(fig)
+    print(f"  collated/lines.png")
+
+    # Also preserve the old wide layout for slides or desktop inspection.
     fig, axes = plt.subplots(1, n, figsize=(9 * n, 5), constrained_layout=True)
     if n == 1:
         axes = [axes]
     for ax, (label, res, layers, _act) in zip(axes, models):
         plot_lines(res, None, layers=layers, title=_short_label(label), ax=ax)
     fig.suptitle("Linear probe accuracy by layer — all models", fontsize=13)
-    _save(fig, out_dir / "lines.png", pgf)
+    _save(fig, out_dir / "lines_wide.png", pgf)
     plt.close(fig)
-    print(f"  collated/lines.png")
+    print(f"  collated/lines_wide.png")
 
     # ── full_layers ───────────────────────────────────────────────────────────
     fig, axes = plt.subplots(1, n, figsize=(11 * n, 5), constrained_layout=True)
