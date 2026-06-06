@@ -21,10 +21,11 @@ export UV_LINK_MODE="${UV_LINK_MODE:-copy}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 export HF_HOME="${HF_HOME:-/tmp/hf-home}"
 
-# Activation files are large but need to survive between jobs so --probe-only works.
-# They live in NFS scratch (MECHAPTCHA_CACHE), not the repo and not node-local scratch.
-# Override by setting MECHAPTCHA_CACHE in the environment before submitting.
-ACTIVATION_CACHE="${MECHAPTCHA_CACHE:-/nlp/scr/siddharth/mechaptcha/activations}"
+# Activation files are large intermediate caches. By default they stay on
+# node-local scratch and disappear with the allocation; only small result JSONs
+# and charts are persisted. Override MECHAPTCHA_CACHE or pass --activations only
+# when you intentionally need activations to survive for a later --probe-only job.
+ACTIVATION_CACHE="${MECHAPTCHA_CACHE:-${LOCAL_SCRATCH:-/tmp}/mechaptcha-activations}"
 
 # Parse --output and --activations from forwarded args.
 PERSISTENT_OUTPUT=""
@@ -39,8 +40,8 @@ for ((i=0; i<${#args[@]}; i++)); do
   esac
 done
 
-# Activations go to the NFS cache (persistent, reusable with --probe-only).
-# Caller can override with --activations if they want a different location.
+# Activations go to local scratch by default. Caller can override with
+# --activations or MECHAPTCHA_CACHE if they want a different location.
 if [[ -n "$CALLER_ACTIVATIONS" ]]; then
   ACTIVATIONS="$CALLER_ACTIVATIONS"
 elif [[ -n "$PERSISTENT_OUTPUT" ]]; then
@@ -82,7 +83,14 @@ uv run python -m dino.run "${FILTERED_ARGS[@]}" \
   --activations "$ACTIVATIONS"
 
 # Run MLP and sparse probes on the same (cached) activations.
-for CLF in mlp sparse_logistic; do
+# Override DINO_PROBE_CLASSIFIERS to choose which extra CPU/sklearn probes run
+# after the default linear probe. Examples:
+#   DINO_PROBE_CLASSIFIERS="mlp"              # skip sparse logistic on GPU
+#   DINO_PROBE_CLASSIFIERS=""                 # extraction + linear only
+#   DINO_PROBE_CLASSIFIERS="mlp sparse_logistic"
+read -r -a EXTRA_CLASSIFIERS <<< "${DINO_PROBE_CLASSIFIERS:-mlp sparse_logistic}"
+for CLF in "${EXTRA_CLASSIFIERS[@]}"; do
+  [[ -n "$CLF" ]] || continue
   CLF_SCRATCH="${SCRATCH_OUTPUT}/${CLF}"
   echo "Running ${CLF} probes -> ${CLF_SCRATCH}"
   uv run python -m dino.run --probe-only --classifier "$CLF" \
@@ -94,10 +102,12 @@ done
 
 # Copy small result files to the persistent output dir.
 if [[ -n "$PERSISTENT_OUTPUT" ]]; then
+  mkdir -p "$PERSISTENT_OUTPUT"
   for f in results.json transcription_accuracy.json; do
     [[ -f "${SCRATCH_OUTPUT}/${f}" ]] && cp "${SCRATCH_OUTPUT}/${f}" "${PERSISTENT_OUTPUT}/${f}"
   done
-  for CLF in mlp sparse_logistic; do
+  for CLF in "${EXTRA_CLASSIFIERS[@]}"; do
+    [[ -n "$CLF" ]] || continue
     CLF_SCRATCH="${SCRATCH_OUTPUT}/${CLF}"
     if [[ -f "${CLF_SCRATCH}/results.json" ]]; then
       mkdir -p "${PERSISTENT_OUTPUT}/${CLF}"

@@ -120,6 +120,7 @@ def extract_experiment(
                 model, images, device, layers, batch_size=batch_size,
             )
             for layer, arr in activations.items():
+                output_dir.mkdir(parents=True, exist_ok=True)
                 np.save(output_dir / f"{split}_{batch}_{layer}.npy", arr)
 
             seq_acc, char_acc = _transcription_accuracy(predictions, texts, alphabet)

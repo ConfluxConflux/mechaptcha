@@ -84,10 +84,39 @@ def _parse_args() -> argparse.Namespace:
 
 
 
-def _resolve_experiments(root: Path, single: str | None) -> list[Path]:
+def _is_valid_experiment_dir(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / "labels.csv").is_file()
+        and (path / "batch_a" / "images").is_dir()
+        and (path / "batch_b" / "images").is_dir()
+    )
+
+
+def _resolve_experiments(root: Path, single: str | None, *, require_labels: bool = False) -> list[Path]:
     if single:
-        return [root / single]
-    return sorted(p for p in root.iterdir() if p.is_dir())
+        exp = root / single
+        if require_labels and not _is_valid_experiment_dir(exp):
+            raise SystemExit(
+                f"Experiment {exp} is missing labels.csv or batch_a/b image directories."
+            )
+        if not exp.is_dir():
+            raise SystemExit(f"Experiment directory not found: {exp}")
+        return [exp]
+    if not require_labels:
+        experiments = sorted(p for p in root.iterdir() if p.is_dir())
+        if not experiments:
+            raise SystemExit(f"No experiment directories found under {root}")
+        return experiments
+    experiments = []
+    for path in sorted(p for p in root.iterdir() if p.is_dir()):
+        if _is_valid_experiment_dir(path):
+            experiments.append(path)
+        else:
+            print(f"Skipping incomplete experiment directory: {path}", file=sys.stderr)
+    if not experiments:
+        raise SystemExit(f"No complete experiments found under {root}")
+    return experiments
 
 
 def _infer_layers_from_activations(activations_root: Path) -> tuple[str, ...]:
@@ -129,7 +158,7 @@ def main() -> None:
         layers = tuple(args.layers) if args.layers else block_layer_names(model.num_blocks)
         print(f"Probing layers: {layers}")
 
-        experiments = _resolve_experiments(Path(args.experiments), args.experiment)
+        experiments = _resolve_experiments(Path(args.experiments), args.experiment, require_labels=True)
         accuracy: dict[str, dict] = {}
         for exp_dir in tqdm(experiments, desc="Extracting"):
             name = exp_dir.name

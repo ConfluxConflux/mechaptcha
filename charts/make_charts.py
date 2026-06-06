@@ -86,6 +86,9 @@ TRANSCRIPTION_ACCURACY: dict[str, Path] = {
     "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
     "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
     "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
+    "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/transcription_accuracy.json",
+    "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/transcription_accuracy.json",
+    "CLIP-B":           REPO_ROOT / "dino_results/clip-vit-base/transcription_accuracy.json",
 }
 
 _CONTROL = ("same_data_control", "same_distribution_control")
