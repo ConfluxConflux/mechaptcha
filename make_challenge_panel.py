@@ -25,8 +25,11 @@ PERTURBATION_DISPLAY = {
     "two_lines":         "two lines",
     "bold":              "bold font",
     "italic":            "italic font",
-    "dumb_control":      "same-data control",
-    "variation_control": "same-distribution control",
+    "dumb_control":      None,   # skip
+    "variation_control": None,   # skip
+    "char_jitter":       None,   # skip (minor cosmetic, not distinctive)
+    "spacing_litter":    None,   # skip
+    "spacing_jitter":    None,   # skip
 }
 
 print("Loading dataset…")
