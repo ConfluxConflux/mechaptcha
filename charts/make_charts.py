@@ -311,6 +311,120 @@ def collate_plots(models: list, pgf: bool = False) -> None:
     print(f"  collated/categories.png")
 
 
+def plot_full_layers_stacked(models: list, out: Path, pgf: bool = False) -> None:
+    """Vertically stacked full-layer line charts — one panel per model, one shared legend."""
+    if not models:
+        return
+
+    import matplotlib.lines as mlines
+    from matplotlib.font_manager import FontProperties
+    from probe.plot import _CATEGORIES, _PALETTES, _display
+
+    n = len(models)
+    PANEL_H = 2.8   # inches per panel
+    FIG_W   = 7.0   # full text width
+    LEG_W   = 0.28  # fraction of figure width reserved for legend on the right
+
+    fig, axes = plt.subplots(n, 1, figsize=(FIG_W, n * PANEL_H),
+                             squeeze=False, constrained_layout=False)
+    axes = [ax[0] for ax in axes]
+
+    fig.subplots_adjust(left=0.07, right=1 - LEG_W - 0.01,
+                        top=0.97, bottom=0.06, hspace=0.45)
+
+    bold_fp   = FontProperties(weight="bold")
+    normal_fp = FontProperties()
+
+    # Build legend handles once from the union of all experiments
+    all_exps: set[str] = set()
+    for _, res, _, _ in models:
+        all_exps |= set(res.keys())
+
+    legend_handles: list = []
+    for cat, exps in _CATEGORIES.items():
+        present = [e for e in exps if e in all_exps]
+        if not present:
+            continue
+        colors = _PALETTES[cat]
+        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
+        for i, exp in enumerate(exps):
+            if exp not in all_exps:
+                continue
+            is_control = cat == "Controls"
+            legend_handles.append(mlines.Line2D(
+                [], [],
+                color=colors[i % len(colors)],
+                linestyle="--" if is_control else "-",
+                marker="o", markersize=3.5,
+                label=_display(exp),
+            ))
+
+    # Draw each panel
+    for ax, (label, res, layers, _) in zip(axes, models):
+        layer_list = [l for l in layers
+                      if any(not np.isnan(
+                          res[e][l].test_acc if l in res.get(e, {}) else float("nan")
+                      ) for e in res)]
+
+        # Background shading for bookend zones
+        input_idx  = next((i for i, l in enumerate(layer_list) if l == "input"),  None)
+        logits_idx = next((i for i, l in enumerate(layer_list) if l == "logits"), None)
+        x = list(range(len(layer_list)))
+
+        if input_idx is not None:
+            ax.axvspan(-0.5, input_idx + 0.5, color="#f5e6cc", alpha=0.5, zorder=0)
+            ax.text(input_idx, 1.005, "raw\npixels",
+                    ha="center", va="bottom", fontsize=6, color="#8B6914")
+        if logits_idx is not None:
+            ax.axvspan(logits_idx - 0.5, len(layer_list) - 0.5,
+                       color="#d4edda", alpha=0.5, zorder=0)
+            ax.text(logits_idx, 1.005, "model\noutput",
+                    ha="center", va="bottom", fontsize=6, color="#2d6a4f")
+
+        for cat, exps in _CATEGORIES.items():
+            colors = _PALETTES[cat]
+            is_control = cat == "Controls"
+            for i, exp in enumerate(exps):
+                if exp not in res:
+                    continue
+                ys = [res[exp][l].test_acc if l in res[exp] else float("nan")
+                      for l in layer_list]
+                ax.plot(x, ys,
+                        marker="o", markersize=3, linewidth=1.4,
+                        linestyle="--" if is_control else "-",
+                        color=colors[i % len(colors)], alpha=0.85, zorder=2)
+
+        xlabels = [l.replace("conv_block_", "cb").replace("block_", "blk ") for l in layer_list]
+        ax.set_xticks(x)
+        ax.set_xticklabels(xlabels, rotation=20, ha="right", fontsize=7)
+        ax.set_ylim(0.45, 1.08)
+        ax.set_ylabel("Probe acc.", fontsize=8)
+        ax.axhline(0.5, color="black", linewidth=0.7, linestyle=":", alpha=0.5)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+        ax.grid(axis="y", alpha=0.25)
+        ax.set_title(label, fontsize=9, pad=3)
+
+    # Single shared legend pinned to the right of the figure
+    leg = fig.legend(
+        handles=legend_handles,
+        loc="center left",
+        bbox_to_anchor=(1 - LEG_W + 0.01, 0.5),
+        bbox_transform=fig.transFigure,
+        frameon=True, fontsize=7.5, handlelength=2,
+        borderpad=0.6, labelspacing=0.35,
+    )
+    for text, handle in zip(leg.get_texts(), legend_handles):
+        if handle.get_color() == "none":
+            text.set_fontproperties(bold_fp)
+            text.set_color("#333333")
+        else:
+            text.set_fontproperties(normal_fp)
+
+    _save(fig, out, pgf)
+    plt.close(fig)
+    print(f"  wrote {out.relative_to(REPO_ROOT)}")
+
+
 def main() -> None:
     import argparse
     p = argparse.ArgumentParser(description=__doc__,
