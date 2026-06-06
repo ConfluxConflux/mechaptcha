@@ -3,21 +3,25 @@
 This document defines the model labels used in `charts/` and how each model was trained to solve the CAPTCHA transcription task.
 
 ## TLDR
-- dinov2-s: [DINOv2-Small](https://huggingface.co/facebook/dinov2-small). Doesn't natively output captcha text, so to make it work we wrapped it with 5 character heads at the end (one for each output character) so a logits layer is produced. Those heads are random/untrained in the pre-trained only run, so the transcription accuracy is 0.0 (garbage). This serves as the basis for:
-	- dinov2-s-frozen: Dinov2-Small, no transformer weights changed and no lora adapters. We froze the backbone and trained only the transcript heads at the very end. In other words, it only learns how to recognize captcha text from existing pretrained features, it does not learn visual features.
+### DINOv2
+- `dinov2-s`: [DINOv2-Small](https://huggingface.co/facebook/dinov2-small). Doesn't natively output captcha text, so to make it work we wrapped it with 5 character heads at the end (one for each output character) so a logits layer is produced. Those heads are random/untrained in the pre-trained only run, so the transcription accuracy is 0.0 (garbage). This serves as the basis for:
+	- `dinov2-s-frozen`: Dinov2-Small, no transformer weights changed and no lora adapters. We froze the backbone and trained only the transcript heads at the very end. In other words, it only learns how to recognize captcha text from existing pretrained features, it does not learn visual features.
 		- The [performance](./transcription_accuracy.csv) of this model on the CAPTCHA task is very bad [see line `DINOv2-S-frozen`].
-	- dinov2-s-lora: Dinov2-Small, with LoRA adapters *and* our character heads fine-tuned on the CAPTCHA transcription task. This model can adjust its visual features via the LoRA adapters, and it also trains the character heads at the end. This is a more flexible setup than `dinov2-s-frozen` and it [performs](./transcription_accuracy.csv) much better on the CAPTCHA task [see line `DINOv2-S-lora`] — 87% accuracy at recognizing all 5 letters.
-- dinov2-b: [DINOv2-Base](https://huggingface.co/facebook/dinov2-base). Same as dinov2-s, but at the base scale so 2x hidden dim size, 4x total params. 
-	- dinov2-b-frozen: this is currently running, no results yet. 
-	- dinov2-b-lora: same as the dinov2-s-lora, but larger
+	- `dinov2-s-lora`: Dinov2-Small, with LoRA adapters *and* our character heads fine-tuned on the CAPTCHA transcription task. This model can adjust its visual features via the LoRA adapters, and it also trains the character heads at the end. This is a more flexible setup than `dinov2-s-frozen` and it [performs](./transcription_accuracy.csv) much better on the CAPTCHA task [see line `DINOv2-S-lora`] — 87% accuracy at recognizing all 5 letters.
+- `dinov2-b`: [DINOv2-Base](https://huggingface.co/facebook/dinov2-base). Same as dinov2-s, but at the base scale so 2x hidden dim size, 4x total params. 
+	- `dinov2-b-frozen`: this is currently running, no results yet. 
+	- `dinov2-b-lora`: same as the dinov2-s-lora, but larger
 
+### CLIP
 - `clip-b`: from [`openai/clip-vit-base-patch16`](https://huggingface.co/openai/clip-vit-base-patch16). Just like dino-v2, wrapped it with 5 character heads at the end, randomly initialized. 
 	- `clip-b-frozen`: take our `clip-b` with the 5 character heads, freeze the entire model except for our CAPTCHA character heads, and train only those for our task. Just like the Dino-v2 frozen variants.
 	- `clip-b-lora`: Same as dinov2 lora: train a lora adapter and our 5 character heads for the CAPTCHA task.
 
+### ViT
 - `vit-b-lora`: supervised ViT model, based on the `vit_base_patch16_224` model from the [`timm` library](https://github.com/huggingface/pytorch-image-models). Just like our other lora models, we slapped on 5 character heads and trained those along with a LoRA adapter for the task. Performs [fairly well](./transcription_accuracy.csv), 82% accuracy.
 	- The point of this was as a control vs. Dino v2 and CLIP.
 
+### CNN
 - `cnn`: We trained this from scratch on the CAPTCHA task. Custom CNN architecture with 5 character heads on the end. Quite accurate.
 
 
