@@ -375,6 +375,7 @@ def main() -> None:
     plot_depth_curve(models, CHARTS_DIR / "collated" / "decodability_vs_depth.png", pgf=args.pgf)
     if len(models) > 1:
         plot_peak_vs_output(models, CHARTS_DIR / "collated" / "peak_vs_output.png", pgf=args.pgf)
+    plot_full_layers_stacked(models, CHARTS_DIR / "collated" / "full_layers_stacked.png", pgf=args.pgf)
     print("Done.")
 
 
