@@ -37,7 +37,7 @@ DISPLAY = {
     "bold":              "Bold",
     "italic":            "Italic",
     "dumb_control":      "Same-data ctrl.",
-    "variation_control": "Same-dist.\ ctrl.",
+    "variation_control": r"Same-dist.\ ctrl.",
 }
 
 
