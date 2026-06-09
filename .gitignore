@@ -5,6 +5,7 @@ logs/
 /wandb/
 /data/
 /probe_results/activations/
+/activations/
 *.log
 __pycache__/
 .DS_Store

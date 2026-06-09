@@ -46,17 +46,18 @@ global-avg-pool), `embedding` (pooled CLS the heads read), `logits`.
 
 ```bash
 # 1. LoRA fine-tune the backbone (GPU; via Slurm)
+#    train_slurm.sh auto-submits the probe job after training completes.
 sbatch dino/train_slurm.sh --model-name facebook/dinov2-small \
-    --train-size 50000 --epochs 6 --output dino_runs/dinov2-small/best.pt
+    --train-size 50000 --epochs 6 --output dino_runs/dinov2-small-lora/best.pt
 
-# 2. Extract activations + probe + plot
+# 2. Extract activations + probe + plot (if running manually)
 EXP=data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525
-sbatch dino/run_slurm.sh --checkpoint dino_runs/dinov2-small/best.pt \
-    --experiments "$EXP" --output dino_results/dinov2-small
+sbatch dino/run_slurm.sh --checkpoint dino_runs/dinov2-small-lora/best.pt \
+    --experiments "$EXP" --output dino_results/dinov2-small-lora
 
 # Re-probe existing activations with a different classifier
 uv run python -m dino.run --probe-only --classifier mlp \
-    --activations dino_results/dinov2-small/activations --output dino_results/dinov2-small
+    --activations dino_results/dinov2-small-lora/activations --output dino_results/dinov2-small-lora/mlp
 ```
 
 ## Outputs (under `--output`)

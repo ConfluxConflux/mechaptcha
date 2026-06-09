@@ -188,6 +188,23 @@ def save_checkpoint(model: DinoCaptchaModel, path: str | Path) -> None:
     torch.save({"dino_config": asdict(model.config), "trainable": trainable}, path)
 
 
+def load_pretrained_only(backbone: str, model_name: str) -> DinoCaptchaModel:
+    """Load a DinoCaptchaModel with pretrained backbone weights and no LoRA training.
+
+    Used to probe a pretrained-but-not-fine-tuned backbone — the character heads are
+    randomly initialised (so the 'logits' layer is meaningless) but all intermediate
+    block features faithfully represent the unmodified pretrained representations.
+
+    Args:
+        backbone: one of "dinov2", "clip", "timm"
+        model_name: HuggingFace model id or timm model name (e.g. "facebook/dinov2-small")
+    """
+    config = DinoConfig(backbone=backbone, model_name=model_name)
+    model = DinoCaptchaModel(config, pretrained=True)
+    model.eval()
+    return model
+
+
 def load_checkpoint(path: str | Path, *, map_location="cpu") -> DinoCaptchaModel:
     """Rebuild a DinoCaptchaModel from a saved checkpoint (re-downloads base weights)."""
     ckpt = torch.load(path, map_location=map_location, weights_only=False)

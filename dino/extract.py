@@ -75,7 +75,9 @@ def extract_activations_from_images(
             logits = feats["logits"].reshape(len(chunk), model.config.num_chars, model.config.num_classes)
             pred_chunks.append(logits.argmax(dim=-1).cpu().numpy())
 
-    activations = {name: np.concatenate(chunks) for name, chunks in accumulated.items()}
+    # float16 halves storage vs float32 with negligible effect on linear probe accuracy.
+    activations = {name: np.concatenate(chunks).astype(np.float16)
+                   for name, chunks in accumulated.items()}
     predictions = np.concatenate(pred_chunks)
     return activations, predictions
 
@@ -110,7 +112,7 @@ def extract_experiment(
         texts = split_rows.set_index("id").loc[split_ids, "text"].tolist()
         np.save(output_dir / f"{split}_ids.npy", np.array(split_ids))
 
-        accuracy[split] = {}
+        accuracy[split] = {"n": len(split_ids)}
         for batch in ("batch_a", "batch_b"):
             img_dir = experiment_dir / batch / "images"
             images = [Image.open(img_dir / f"{sid:06d}.png") for sid in split_ids]
@@ -118,6 +120,7 @@ def extract_experiment(
                 model, images, device, layers, batch_size=batch_size,
             )
             for layer, arr in activations.items():
+                output_dir.mkdir(parents=True, exist_ok=True)
                 np.save(output_dir / f"{split}_{batch}_{layer}.npy", arr)
 
             seq_acc, char_acc = _transcription_accuracy(predictions, texts, alphabet)

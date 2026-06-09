@@ -1,0 +1,55 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{ll}
+\hline
+Model & Training details \\
+\hline
+CNN &
+\begin{tabular}[t]{@{}l@{}}
+Custom CNN, trained from scratch \\
+Conv channels: 64, 128, 256, 384; embedding: 512 \\
+Train: full train set; epochs: 20; batch: 1024 \\
+LR: $3{\times}10^{-4}$, cosine decay to $10^{-5}$, warmup 1000 \\
+Weight decay: $10^{-4}$; val seq. acc.: 0.9569
+\end{tabular}
+\\[1.0em]
+DINOv2-S-LoRA &
+\begin{tabular}[t]{@{}l@{}}
+Backbone: facebook/dinov2-small \\
+Trainable: LoRA adapters + 5 character heads, 344,962 params \\
+LoRA: $r=16$, $\alpha=32$, dropout 0.05; targets: query/value \\
+Train: 50k; epochs: 6; batch: 128 \\
+LR: $5{\times}10^{-4}$, cosine decay to $10^{-5}$, warmup 200 \\
+Val seq. acc.: 0.893
+\end{tabular}
+\\[1.0em]
+DINOv2-B-LoRA &
+\begin{tabular}[t]{@{}l@{}}
+Backbone: facebook/dinov2-base \\
+Trainable: LoRA adapters + 5 character heads, 689,794 params \\
+LoRA: $r=16$, $\alpha=32$, dropout 0.05; targets: query/value \\
+Train: 50k; epochs: 6; batch: 96 \\
+LR: $5{\times}10^{-4}$, cosine decay to $10^{-5}$, warmup 200 \\
+Val seq. acc.: 0.939
+\end{tabular}
+\\[1.0em]
+CLIP-B-LoRA &
+\begin{tabular}[t]{@{}l@{}}
+Backbone: openai/clip-vit-base-patch16 \\
+Trainable: LoRA adapters + 5 character heads, 689,794 params \\
+LoRA: $r=16$, $\alpha=32$, dropout 0.05; targets: q\_proj/v\_proj \\
+Train: 50k; epochs: 6; batch: 96 \\
+LR: $5{\times}10^{-4}$, cosine decay to $10^{-5}$, warmup 200 \\
+Val seq. acc.: 0.921
+\end{tabular}
+\\
+\hline
+\end{tabular}
+\caption{
+Training hyperparameters for task-trained CAPTCHA transcription models.
+LoRA adapters and character heads were trained jointly; original transformer backbone weights remained frozen.
+}
+\label{tab:training-hyperparams-narrow}
+\end{table}

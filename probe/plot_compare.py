@@ -30,16 +30,13 @@ _FULL_LAYERS  = ["input"] + _HOOK_LAYERS + ["logits"]
 _FULL_LABELS  = ["input\n(pixels)", "cb0", "cb1", "cb2", "cb3", "pool", "embed", "logits\n(output)"]
 
 _ORDER = ["salt_pepper", "blur", "dots", "bold", "italic",
-          "wavy_line", "easy_line", "hard_line", "two_lines", "rotation", "wave",
-          "dumb_control", "variation_control"]
+          "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
+          "same_data_control", "same_distribution_control"]
 
 _DISPLAY_NAMES: dict[str, str] = {
-    "wave":             "letter wave",
-    "easy_line":        "horizontal line",
-    "hard_line":        "angled line",
-    "salt_pepper":      "salt-and-pepper noise",
-    "dumb_control":     "same-data control",
-    "variation_control": "same-distribution control",
+    "wave":      "letter wave",
+    "easy_line": "horizontal line",
+    "hard_line": "angled line",
 }
 
 
@@ -48,11 +45,12 @@ def _display(name: str) -> str:
 
 
 _CATEGORIES = {
-    "Pixel-level noise": (["blur", "dots", "salt_pepper"],                      ["#1f77b4", "#aec7e8", "#4a90d9"]),
-    "Line artifact":     (["wavy_line", "easy_line", "hard_line", "two_lines"], ["#8B1A1A", "#C0392B", "#E05555", "#F4AAAA"]),
-    "Geometric warp":    (["rotation", "wave"],                                  ["#7b2fa3", "#c5b0d5"]),
-    "Font style":        (["bold", "italic"],                                    ["#2ca02c", "#98df8a"]),
-    "Controls":          (["dumb_control", "variation_control"],                 ["#7f7f7f", "#bdbdbd"]),
+    "Pixel-level noise": (["blur", "dots", "salt_pepper"],          ["#1f77b4", "#aec7e8", "#4a90d9"]),
+    "Geometric":         (["rotation", "wave", "wavy_line",
+                           "easy_line", "hard_line", "two_lines"],   ["#d62728", "#ff9896", "#e07070",
+                                                                       "#9467bd", "#c5b0d5", "#8c5294"]),
+    "Font style":        (["bold", "italic"],                        ["#2ca02c", "#98df8a"]),
+    "Controls":          (["same_data_control", "same_distribution_control"],     ["#7f7f7f", "#bdbdbd"]),
 }
 
 

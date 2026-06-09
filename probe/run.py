@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -38,7 +39,7 @@ if str(REPO_ROOT) not in sys.path:
 from probe.config import ALL_LAYERS, CLASSIFIERS, CONV_REDUCTIONS, HOOK_LAYERS, ProbeConfig, get_model_layers
 from probe.extract import extract_experiment, extract_hf_experiments, load_model
 from probe.fit import probe_experiment
-from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_task_accuracy
 from probe.results import format_table, save_results
 
 
@@ -101,6 +102,7 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+
 def _resolve_experiments(args: argparse.Namespace, root: Path) -> list[Path]:
     if args.experiment:
         return [root / args.experiment]
@@ -157,13 +159,23 @@ def main() -> None:
         print(f"Probing layers: {config.layers}")
 
         if local_experiments:
+            transcription_accuracy: dict = {}
             for exp_dir in tqdm(experiments, desc="Extracting"):
                 out = args.activations / exp_dir.name
                 if not args.force_extract and not _needs_extraction(out, config):
                     tqdm.write(f"  {exp_dir.name}: activations already exist, skipping")
                     continue
-                extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
+                acc = extract_experiment(exp_dir, model, device, out, config, max_train_ids=args.max_train_ids)
+                transcription_accuracy[exp_dir.name] = acc
                 tqdm.write(f"  {exp_dir.name} -> {out}")
+            if transcription_accuracy:
+                acc_path = args.output / "transcription_accuracy.json"
+                args.output.mkdir(parents=True, exist_ok=True)
+                acc_path.write_text(json.dumps(transcription_accuracy, indent=2))
+                print(f"Transcription accuracy saved to {acc_path}")
+                if not args.no_plot:
+                    plot_task_accuracy(transcription_accuracy, args.output / "task_accuracy.png")
+                    print(f"Task accuracy chart saved to {args.output / 'task_accuracy.png'}")
         else:
             print(f"Loading experiments from HF dataset {args.experiments}")
             extract_hf_experiments(

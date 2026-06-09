@@ -16,15 +16,14 @@ def _save(fig, path: Path, pgf: bool) -> None:
     if pgf:
         fig.savefig(path.with_suffix(".pgf"), bbox_inches="tight")
 
-_CONTROL_SUFFIXES = ("dumb_control", "variation_control")
+_CONTROL_SUFFIXES = ("same_data_control", "same_distribution_control")
 
 _DISPLAY_NAMES: dict[str, str] = {
-    "wave":             "letter wave",
-    "easy_line":        "horizontal line",
-    "hard_line":        "angled line",
-    "salt_pepper":      "salt-and-pepper noise",
-    "dumb_control":     "same-data control",
-    "variation_control": "same-distribution control",
+    "wave":                    "letter wave",
+    "easy_line":               "horizontal line",
+    "hard_line":               "angled line",
+    "same_data_control":       "same-data control",
+    "same_distribution_control": "same-distribution control",
 }
 
 
@@ -41,15 +40,13 @@ def _get_acc(results: AllResults, exp: str, layer: str) -> float:
 
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
-    "Line artifact":     ["wavy_line", "easy_line", "hard_line", "two_lines"],
-    "Geometric warp":    ["rotation", "wave"],
+    "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
     "Font style":        ["bold", "italic"],
-    "Controls":          ["dumb_control", "variation_control"],
+    "Controls":          ["same_data_control", "same_distribution_control"],
 }
 _PALETTES: dict[str, list[str]] = {
     "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
-    "Line artifact":     ["#8B1A1A", "#C0392B", "#E05555", "#F4AAAA"],
-    "Geometric warp":    ["#7b2fa3", "#c5b0d5"],
+    "Geometric":         ["#d62728", "#ff9896", "#e07070", "#9467bd", "#c5b0d5", "#8c5294"],
     "Font style":        ["#2ca02c", "#98df8a"],
     "Controls":          ["#7f7f7f", "#bdbdbd"],
 }
@@ -72,11 +69,11 @@ _ARCH_LAYER_HEIGHTS = {
 }
 _ARCH_ORDER = [
     "salt_pepper", "blur", "dots", "bold", "italic",
-    "wavy_line", "easy_line", "hard_line", "two_lines", "rotation", "wave",
+    "easy_line", "hard_line", "two_lines", "wavy_line", "wave", "rotation",
 ]
 
 _PCA_EXPS = [
-    ("salt_pepper", "salt-and-pepper noise  (99% → 60%)"),
+    ("salt_pepper", "Salt & pepper  (99% → 60%)"),
     ("italic",      "Italic font  (builds: 92% → 99%)"),
     ("rotation",    "Rotation  (stays weak: 76–83%)"),
 ]
@@ -353,7 +350,7 @@ def plot_arch(
 
     # ── Legend note ───────────────────────────────────────────────────────────
     ax.text(4.8, 0.32,
-            "Box color = avg probe accuracy (perturbations only)  ·  "
+            "Box color = avg probe accuracy (distortions only)  ·  "
             "Circles = logistic regression: can it separate batch A from batch B?\n"
             "Brown = raw pixel probe  ·  Red = intermediate layer probes  ·  Green = logit probe",
             ha="center", va="center", fontsize=7.5, color="#333",
@@ -713,6 +710,74 @@ def plot_linear_vs_mlp(
     plt.close(fig)
 
 
+# ── Sparsity chart ───────────────────────────────────────────────────────────
+
+def plot_sparsity(
+    results: AllResults,
+    layers: tuple[str, ...],
+    output_path: Path,
+    title: str = "Sparse probe: fraction of non-zero weights per layer",
+    pgf: bool = False,
+) -> None:
+    """Line chart of probe weight sparsity (fraction non-zero) vs layer.
+
+    Only meaningful for sparse_logistic results, where most weights are exactly
+    zero. Lower = sparser = fewer features needed to decode the distortion.
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
+    from matplotlib.font_manager import FontProperties
+
+    body_layers = [l for l in layers if l not in ("input", "logits")
+                   and any(l in results.get(e, {}) for e in results)]
+    layer_labels = [l.replace("conv_block_", "cb").replace("block_", "blk ") for l in body_layers]
+    x = list(range(len(body_layers)))
+    bold_fp, normal_fp = FontProperties(weight="bold"), FontProperties()
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    legend_handles: list = []
+
+    for cat, exps in _CATEGORIES.items():
+        colors = _PALETTES[cat]
+        is_control = cat == "Controls"
+        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
+        for i, exp in enumerate(exps):
+            if exp not in results:
+                continue
+            vals = []
+            for layer in body_layers:
+                r = results[exp].get(layer)
+                vals.append(r.sparsity if r and r.sparsity is not None else float("nan"))
+            color = colors[i % len(colors)]
+            ax.plot(x, vals, marker="o", markersize=4, linewidth=1.5,
+                    linestyle="--" if is_control else "-", color=color, alpha=0.85)
+            legend_handles.append(mlines.Line2D(
+                [], [], color=color, linestyle="--" if is_control else "-",
+                marker="o", markersize=4, label=_display(exp),
+            ))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(layer_labels)
+    ax.set_ylabel("Fraction of non-zero weights")
+    ax.set_xlabel("Layer")
+    ax.set_title(title)
+    ax.set_ylim(-0.02, 1.02)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.grid(axis="y", alpha=0.3)
+    ax.axhline(0, color="black", linewidth=0.8, linestyle=":", alpha=0.4)
+
+    leg = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
+                    borderaxespad=0, frameon=True, fontsize=8, handlelength=2)
+    for text, handle in zip(leg.get_texts(), legend_handles):
+        fp = bold_fp if handle.get_color() == "none" else normal_fp
+        text.set_fontproperties(fp)
+        if handle.get_color() == "none":
+            text.set_color("#333333")
+
+    _save(fig, output_path, pgf)
+    plt.close(fig)
+
+
 # ── PCA scatter ───────────────────────────────────────────────────────────────
 
 def plot_pca(
@@ -803,5 +868,81 @@ def plot_pca(
                  exp_label, ha="left", va="center", fontsize=9, fontweight="bold", rotation=90)
 
     plt.tight_layout(rect=[0.03, 0, 1, 0.95])
+    _save(fig, output_path, pgf)
+    plt.close(fig)
+
+
+# ── Task (transcription) accuracy per distortion ──────────────────────────────
+
+_TASK_CONTROL_EXPS = {"same_data_control", "same_distribution_control"}
+
+
+def plot_task_accuracy(
+    acc_data: dict,
+    output_path: Path,
+    label: str = "",
+    pgf: bool = False,
+) -> None:
+    """Grouped bar chart of CAPTCHA transcription accuracy per distortion.
+
+    Shows test batch_a (distorted) and batch_b (clean) seq accuracy side by side,
+    sorted by batch_a accuracy ascending so hardest distortions appear left.
+    Error bars are ±1 binomial SE = sqrt(p*(1-p)/n). n is read from acc_data
+    if present (stored during extraction); omitted from title otherwise.
+    """
+    import matplotlib.pyplot as plt
+
+    exps = [e for e in acc_data if e not in _TASK_CONTROL_EXPS]
+    exps.sort(key=lambda e: acc_data[e].get("test", acc_data[e].get("train", {})).get("batch_a_seq_acc", 0))
+
+    def _split(exp):
+        return acc_data[exp].get("test") or acc_data[exp].get("train") or {}
+
+    def _get(exp, key):
+        return _split(exp).get(key, float("nan"))
+
+    def _se(p, n):
+        if np.isnan(p) or not n:
+            return 0.0
+        return (p * (1 - p) / n) ** 0.5
+
+    a_accs = [_get(e, "batch_a_seq_acc") for e in exps]
+    b_accs = [_get(e, "batch_b_seq_acc") for e in exps]
+    ns = [_split(e).get("n") for e in exps]
+    a_errs = [_se(a, n) for a, n in zip(a_accs, ns)]
+    b_errs = [_se(b, n) for b, n in zip(b_accs, ns)]
+
+    n_val = next((n for n in ns if n is not None), None)
+    n_suffix = f"  (n={n_val:,} per distortion)" if n_val is not None else ""
+    title = f"CAPTCHA task accuracy per distortion"
+    if label:
+        title += f" — {label}"
+    title += n_suffix
+
+    x = np.arange(len(exps))
+    w = 0.38
+    err_kw = {"elinewidth": 1.2, "capsize": 3, "ecolor": "#444"}
+    fig, ax = plt.subplots(figsize=(max(8, 1.4 * len(exps)), 5))
+    ax.bar(x - w / 2, a_accs, w, yerr=a_errs, label="Distorted (batch A)",
+           color="#d62728", alpha=0.85, error_kw=err_kw)
+    ax.bar(x + w / 2, b_accs, w, yerr=b_errs, label="Clean (batch B)",
+           color="#1f77b4", alpha=0.85, error_kw=err_kw)
+
+    for xi, (a, ae, b, be) in enumerate(zip(a_accs, a_errs, b_accs, b_errs)):
+        if not np.isnan(a):
+            ax.text(xi - w / 2, a + ae + 0.012, f"{a:.0%}", ha="center", fontsize=7)
+        if not np.isnan(b):
+            ax.text(xi + w / 2, b + be + 0.012, f"{b:.0%}", ha="center", fontsize=7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([_display(e) for e in exps], rotation=20, ha="right")
+    ax.set_ylabel("Sequence accuracy (test set)")
+    ax.set_ylim(0, 1.15)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title(title, fontsize=11)
+    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle=":")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
     _save(fig, output_path, pgf)
     plt.close(fig)

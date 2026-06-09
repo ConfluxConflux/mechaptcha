@@ -15,18 +15,27 @@ AllResults = dict[str, dict[str, "ProbeResult"]]
 class ProbeResult:
     train_acc: float
     test_acc: float
+    # Fraction of probe weights that are non-zero; None for dense classifiers.
+    sparsity: float | None = None
 
     @property
     def test_delta(self) -> float:
         """How far above chance (50%) the test accuracy is."""
         return self.test_acc - 0.5
 
-    def to_dict(self) -> dict[str, float]:
-        return {"train_acc": self.train_acc, "test_acc": self.test_acc}
+    def to_dict(self) -> dict:
+        d: dict = {"train_acc": self.train_acc, "test_acc": self.test_acc}
+        if self.sparsity is not None:
+            d["sparsity"] = self.sparsity
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> ProbeResult:
-        return cls(train_acc=d["train_acc"], test_acc=d["test_acc"])
+        return cls(
+            train_acc=d["train_acc"],
+            test_acc=d["test_acc"],
+            sparsity=d.get("sparsity"),
+        )
 
 
 def save_results(results: AllResults, path: Path) -> None:

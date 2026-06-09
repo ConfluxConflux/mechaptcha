@@ -1,0 +1,22 @@
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccccccccc}
+\hline
+Model & Backbone & Training & Trainable params & Train size & Epochs & Batch & LR & LR schedule & LoRA $(r,\alpha)$ & Val seq. acc. \\
+\hline
+CNN & Custom CNN & from scratch & all params & full train set & 20 & 1024 & $3{\times}10^{-4}$ & cosine, warmup 1000 & -- & 0.9569 \\
+DINOv2-S-LoRA & facebook/dinov2-small & LoRA + heads & 344,962 & 50k & 6 & 128 & $5{\times}10^{-4}$ & cosine, warmup 200 & $(16,32)$ & 0.893 \\
+DINOv2-B-LoRA & facebook/dinov2-base & LoRA + heads & 689,794 & 50k & 6 & 96 & $5{\times}10^{-4}$ & cosine, warmup 200 & $(16,32)$ & 0.939 \\
+CLIP-B-LoRA & openai/clip-vit-base-patch16 & LoRA + heads & 689,794 & 50k & 6 & 96 & $5{\times}10^{-4}$ & cosine, warmup 200 & $(16,32)$ & 0.921 \\
+\hline
+\end{tabular}
+\caption{
+Training hyperparameters for the task-trained CAPTCHA transcription models.
+CNN was trained from scratch. Transformer backbones were initialized from pretrained vision models and trained with LoRA adapters plus five CAPTCHA character heads.
+For LoRA runs, the original backbone weights remained frozen while LoRA adapters and character heads were optimized jointly.
+All models predict five lowercase characters. Validation sequence accuracy is from the original validation split, not the probe/stress-test image set.
+}
+\label{tab:training-hyperparams}
+\end{table*}

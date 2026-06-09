@@ -6,17 +6,17 @@ test-accuracy of a batch_a-vs-batch_b probe at every layer, per experiment.
 
 Usage:
     # Full pipeline: extract activations from a trained LoRA checkpoint, then probe
-    uv run python -m dino.run --checkpoint dino_runs/dinov2-small/best.pt \
+    uv run python -m dino.run --checkpoint dino_runs/dinov2-small-lora/best.pt \
         --experiments data/experiments/siddharthmb/2026.mechaptcha.linear-probe-experiments-giant-20260525 \
-        --output dino_results/dinov2-small
+        --output dino_results/dinov2-small-lora
 
     # Probe only (activations already extracted)
-    uv run python -m dino.run --probe-only --activations dino_results/dinov2-small/activations \
-        --output dino_results/dinov2-small
+    uv run python -m dino.run --probe-only --activations dino_results/dinov2-small-lora/activations \
+        --output dino_results/dinov2-small-lora
 
     # Single experiment, MLP probe
     uv run python -m dino.run --probe-only --experiment hard_line --classifier mlp \
-        --activations dino_results/dinov2-small/activations --output dino_results/dinov2-small
+        --activations dino_results/dinov2-small-lora/activations --output dino_results/dinov2-small-lora
 """
 from __future__ import annotations
 
@@ -34,10 +34,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from dino.config import block_layer_names
 from dino.extract import extract_experiment
-from dino.model import load_checkpoint
+from dino.model import load_checkpoint, load_pretrained_only
 from probe.config import CLASSIFIERS, ProbeConfig
 from probe.fit import probe_experiment
-from probe.plot import plot_heatmap, plot_lines
+from probe.plot import plot_heatmap, plot_lines, plot_task_accuracy
 from probe.results import format_table, save_results
 
 
@@ -51,7 +51,13 @@ def _parse_args() -> argparse.Namespace:
     mode.add_argument("--extract-only", action="store_true", help="Extract activations but do not probe")
 
     p.add_argument("--checkpoint", type=str, default=None,
-                   help="Trained LoRA checkpoint (.pt from dino.train). Required unless --probe-only.")
+                   help="Trained LoRA checkpoint (.pt from dino.train). Required unless --probe-only or --pretrained.")
+    p.add_argument("--pretrained", type=str, default=None, metavar="BACKBONE:MODEL_NAME",
+                   help="Use a pretrained-only backbone with no LoRA fine-tuning. "
+                        "Format: backbone:model_name, e.g. dinov2:facebook/dinov2-small or "
+                        "clip:openai/clip-vit-base-patch32. Mutually exclusive with --checkpoint. "
+                        "Character heads are randomly initialised so the logits layer is meaningless "
+                        "but all intermediate block features are the unmodified pretrained representations.")
     p.add_argument("--experiments", type=str, default=None,
                    help="Local paired-experiment root directory (contains <exp>/labels.csv).")
     p.add_argument("--experiment", type=str, default=None, help="Run a single experiment (default: all)")
@@ -77,10 +83,40 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _resolve_experiments(root: Path, single: str | None) -> list[Path]:
+
+def _is_valid_experiment_dir(path: Path) -> bool:
+    return (
+        path.is_dir()
+        and (path / "labels.csv").is_file()
+        and (path / "batch_a" / "images").is_dir()
+        and (path / "batch_b" / "images").is_dir()
+    )
+
+
+def _resolve_experiments(root: Path, single: str | None, *, require_labels: bool = False) -> list[Path]:
     if single:
-        return [root / single]
-    return sorted(p for p in root.iterdir() if p.is_dir())
+        exp = root / single
+        if require_labels and not _is_valid_experiment_dir(exp):
+            raise SystemExit(
+                f"Experiment {exp} is missing labels.csv or batch_a/b image directories."
+            )
+        if not exp.is_dir():
+            raise SystemExit(f"Experiment directory not found: {exp}")
+        return [exp]
+    if not require_labels:
+        experiments = sorted(p for p in root.iterdir() if p.is_dir())
+        if not experiments:
+            raise SystemExit(f"No experiment directories found under {root}")
+        return experiments
+    experiments = []
+    for path in sorted(p for p in root.iterdir() if p.is_dir()):
+        if _is_valid_experiment_dir(path):
+            experiments.append(path)
+        else:
+            print(f"Skipping incomplete experiment directory: {path}", file=sys.stderr)
+    if not experiments:
+        raise SystemExit(f"No complete experiments found under {root}")
+    return experiments
 
 
 def _infer_layers_from_activations(activations_root: Path) -> tuple[str, ...]:
@@ -101,29 +137,40 @@ def main() -> None:
 
     # ── Extraction ───────────────────────────────────────────────────────────
     if not args.probe_only:
-        if args.checkpoint is None:
-            raise SystemExit("Error: --checkpoint is required unless --probe-only is set.")
+        if args.checkpoint is None and args.pretrained is None:
+            raise SystemExit("Error: --checkpoint or --pretrained is required unless --probe-only is set.")
+        if args.checkpoint is not None and args.pretrained is not None:
+            raise SystemExit("Error: --checkpoint and --pretrained are mutually exclusive.")
         if args.experiments is None:
             raise SystemExit("Error: --experiments is required for extraction.")
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Device: {device}\nLoading model from {args.checkpoint}")
-        model = load_checkpoint(args.checkpoint, map_location=device).to(device)
+        if args.pretrained:
+            parts = args.pretrained.split(":", 1)
+            if len(parts) != 2:
+                raise SystemExit("Error: --pretrained must be in the form backbone:model_name")
+            backbone, model_name = parts
+            print(f"Device: {device}\nLoading pretrained backbone {backbone}:{model_name}")
+            model = load_pretrained_only(backbone, model_name).to(device)
+        else:
+            print(f"Device: {device}\nLoading model from {args.checkpoint}")
+            model = load_checkpoint(args.checkpoint, map_location=device).to(device)
         layers = tuple(args.layers) if args.layers else block_layer_names(model.num_blocks)
         print(f"Probing layers: {layers}")
 
-        experiments = _resolve_experiments(Path(args.experiments), args.experiment)
+        experiments = _resolve_experiments(Path(args.experiments), args.experiment, require_labels=True)
         accuracy: dict[str, dict] = {}
         for exp_dir in tqdm(experiments, desc="Extracting"):
-            out = activations_root / exp_dir.name
+            name = exp_dir.name
+            out = activations_root / name
             expected = out / f"test_batch_b_{layers[-1]}.npy"
             if not args.force_extract and expected.exists():
-                tqdm.write(f"  {exp_dir.name}: activations exist, skipping")
+                tqdm.write(f"  {name}: activations exist, skipping")
                 continue
             acc = extract_experiment(exp_dir, model, device, out, layers,
                                      max_train_ids=args.max_train_ids, batch_size=args.batch_size)
-            accuracy[exp_dir.name] = acc
-            tqdm.write(f"  {exp_dir.name} -> {out}")
+            accuracy[name] = acc
+            tqdm.write(f"  {name} -> {out}")
 
         if accuracy:
             args.output.mkdir(parents=True, exist_ok=True)
@@ -131,6 +178,9 @@ def main() -> None:
             acc_path.write_text(json.dumps(accuracy, indent=2))
             print(f"\nTranscription accuracy (behavioral-invariance check) -> {acc_path}")
             _print_invariance_summary(accuracy)
+            if not args.no_plot:
+                plot_task_accuracy(accuracy, args.output / "task_accuracy.png")
+                print(f"Task accuracy chart saved to {args.output / 'task_accuracy.png'}")
     else:
         layers = tuple(args.layers) if args.layers else _infer_layers_from_activations(activations_root)
 

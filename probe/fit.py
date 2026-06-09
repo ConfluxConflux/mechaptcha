@@ -29,6 +29,13 @@ def _make_classifier(config: ProbeConfig):
             validation_fraction=0.1,
             random_state=0,
         )
+    elif config.classifier == "sparse_logistic":
+        # L1 penalty (l1_ratio=1) drives most weights to zero, revealing which
+        # features encode the distortion. saga supports l1_ratio; liblinear does not.
+        return LogisticRegression(
+            C=config.C, max_iter=config.max_iter,
+            l1_ratio=1.0, solver="saga",
+        )
     raise ValueError(f"Unknown classifier: {config.classifier!r}")
 
 
@@ -52,9 +59,15 @@ def train_probe(
     clf = _make_classifier(config)
     clf.fit(X_train_s, y_train)
 
+    sparsity = None
+    if hasattr(clf, "coef_"):
+        coef = clf.coef_
+        sparsity = float(np.count_nonzero(coef) / coef.size)
+
     return ProbeResult(
         train_acc=float(clf.score(X_train_s, y_train)),
         test_acc=float(clf.score(X_test_s, y_test)),
+        sparsity=sparsity,
     )
 
 

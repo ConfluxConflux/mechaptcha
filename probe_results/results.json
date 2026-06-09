@@ -77,7 +77,7 @@
       "test_acc": 0.8735
     }
   },
-  "dumb_control": {
+  "same_data_control": {
     "conv_block_0": {
       "train_acc": 0.5,
       "test_acc": 0.5
@@ -259,7 +259,7 @@
       "test_acc": 0.9415
     }
   },
-  "variation_control": {
+  "same_distribution_control": {
     "conv_block_0": {
       "train_acc": 0.5205,
       "test_acc": 0.488

@@ -14,7 +14,7 @@ from datasets import Dataset, DatasetDict, Features, Image, Value
 
 from training.distortions import ALL_DISTORTION_KEYS
 
-CONTROL_EXPERIMENTS = {"dumb_control", "variation_control"}
+CONTROL_EXPERIMENTS = {"same_data_control", "same_distribution_control"}
 DEFAULT_MODEL_REPO = "siddharthmb/2026.mechaptcha.full-accuracy-target-90p-val-distortion-stats-20260525"
 
 
@@ -245,9 +245,9 @@ def model_card(repo_id: str, metadata: dict[str, object]) -> str:
             "",
             "Columns:",
             "",
-            "- `experiment`: experiment name, such as `easy_line`, `blur`, or `dumb_control`.",
+            "- `experiment`: experiment name, such as `easy_line`, `blur`, or `same_data_control`.",
             "- `target_distortion`: distortion being isolated for controlled experiments; empty for controls.",
-            "- `control_type`: `controlled_distortion`, `dumb_control`, or `variation_control`.",
+            "- `control_type`: `controlled_distortion`, `same_data_control`, or `same_distribution_control`.",
             "- `id`, `text`, `font`, `split`: seed metadata shared by the pair.",
             "- `image_a`, `image_b`: paired CAPTCHA images.",
             "- `a_*`, `b_*`: boolean distortion flags used for each batch.",
@@ -270,8 +270,8 @@ def model_card(repo_id: str, metadata: dict[str, object]) -> str:
             "",
             "Control experiments:",
             "",
-            "- `dumb_control`: Batch A and Batch B are identical images.",
-            "- `variation_control`: Batch A and Batch B are independent samples from the same distribution.",
+            "- `same_data_control`: Batch A and Batch B are identical images.",
+            "- `same_distribution_control`: Batch A and Batch B are independent samples from the same distribution.",
             "",
             "## Provenance",
             "",

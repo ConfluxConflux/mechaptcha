@@ -12,7 +12,7 @@ Per-model charts are written to charts/<slug>/:
 
 Collated charts (one subplot per model, plus cross-model comparisons) are written to charts/collated/:
 
-  heatmap.png, lines.png, full_layers.png, forgetting.png, categories.png
+  heatmap.png, lines.png, lines_wide.png, full_layers.png, forgetting.png, categories.png
   decodability_vs_depth.png, peak_vs_output.png
 
 Usage:  uv run python charts/make_charts.py
@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from probe.config import ALL_LAYERS
-from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca
+from probe.plot import plot_arch, plot_categories, plot_forgetting, plot_full_layers, plot_heatmap, plot_linear_vs_mlp, plot_lines, plot_pca, plot_sparsity, plot_task_accuracy
 from probe.results import AllResults, load_results
 
 CHARTS_DIR = Path(__file__).resolve().parent
@@ -38,32 +38,78 @@ CHARTS_DIR = Path(__file__).resolve().parent
 # Candidate runs, in plot order. Only those whose results.json exists are used.
 # (label, results.json path, activations dir or None)
 CANDIDATES: list[tuple[str, Path, Path | None]] = [
-    ("CNN (trained from scratch)",       REPO_ROOT / "probe_results/full/results.json",              None),
-    ("DINOv2-S (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-small/results.json",       REPO_ROOT / "dino_results/dinov2-small/activations"),
-    ("DINOv2-B (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-base/results.json",        REPO_ROOT / "dino_results/dinov2-base/activations"),
-    ("DINOv2-L (self-sup, LoRA)",        REPO_ROOT / "dino_results/dinov2-large/results.json",       REPO_ROOT / "dino_results/dinov2-large/activations"),
-    ("CLIP-B (lang-sup, LoRA)",          REPO_ROOT / "dino_results/clip-vit-base/results.json",      REPO_ROOT / "dino_results/clip-vit-base/activations"),
-    ("ViT-B/16 (supervised, LoRA)",      REPO_ROOT / "dino_results/vit-base-supervised/results.json",REPO_ROOT / "dino_results/vit-base-supervised/activations"),
+    ("CNN",                REPO_ROOT / "probe_results/full/results.json",                         None),
+    ("DINOv2-S-lora",      REPO_ROOT / "dino_results/dinov2-small-lora/results.json",             REPO_ROOT / "dino_results/dinov2-small-lora/activations"),
+    ("DINOv2-S-frozen",    REPO_ROOT / "dino_results/dinov2-small-frozen/results.json",           REPO_ROOT / "dino_results/dinov2-small-frozen/activations"),
+    ("DINOv2-B-lora",      REPO_ROOT / "dino_results/dinov2-base-lora/results.json",              REPO_ROOT / "dino_results/dinov2-base-lora/activations"),
+    ("DINOv2-B-frozen",    REPO_ROOT / "dino_results/dinov2-base-frozen/results.json",            REPO_ROOT / "dino_results/dinov2-base-frozen/activations"),
+    ("DINOv2-L-lora",      REPO_ROOT / "dino_results/dinov2-large-lora/results.json",              REPO_ROOT / "dino_results/dinov2-large-lora/activations"),
+    ("CLIP-B-lora",        REPO_ROOT / "dino_results/clip-vit-base-lora/results.json",            REPO_ROOT / "dino_results/clip-vit-base-lora/activations"),
+    ("CLIP-B-frozen",      REPO_ROOT / "dino_results/clip-vit-base-frozen/results.json",          REPO_ROOT / "dino_results/clip-vit-base-frozen/activations"),
+    ("ViT-B-lora",         REPO_ROOT / "dino_results/vit-base-supervised-lora/results.json",      REPO_ROOT / "dino_results/vit-base-supervised-lora/activations"),
+    ("ViT-B-frozen",       REPO_ROOT / "dino_results/vit-base-supervised-frozen/results.json",    REPO_ROOT / "dino_results/vit-base-supervised-frozen/activations"),
+    ("DINOv2-S",           REPO_ROOT / "dino_results/dinov2-small/results.json",                   REPO_ROOT / "dino_results/dinov2-small/activations"),
+    ("DINOv2-B",           REPO_ROOT / "dino_results/dinov2-base/results.json",                    REPO_ROOT / "dino_results/dinov2-base/activations"),
+    ("CLIP-B",             REPO_ROOT / "dino_results/clip-vit-base/results.json",                  REPO_ROOT / "dino_results/clip-vit-base/activations"),
 ]
 
-# For each candidate, if a results.json exists at mlp_results_path, a linear-vs-mlp
-# comparison chart is also generated. MLP probes reuse the same activations.
-MLP_RESULTS: dict[str, Path] = {
-    "DINOv2-S (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-small/mlp/results.json",
-    "DINOv2-B (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-base/mlp/results.json",
-    "DINOv2-L (self-sup, LoRA)":   REPO_ROOT / "dino_results/dinov2-large/mlp/results.json",
-    "CLIP-B (lang-sup, LoRA)":     REPO_ROOT / "dino_results/clip-vit-base/mlp/results.json",
-    "ViT-B/16 (supervised, LoRA)": REPO_ROOT / "dino_results/vit-base-supervised/mlp/results.json",
-    "CNN (trained from scratch)":  REPO_ROOT / "probe_results/full_mlp/results.json",
+def _probe_results(subdir: str) -> dict[str, Path]:
+    """Build a label->Path map for a probe variant (mlp, sparse_logistic, etc.)."""
+    return {
+        "CNN":           REPO_ROOT / f"probe_results/full_{subdir}/results.json",
+        "DINOv2-S-lora": REPO_ROOT / f"dino_results/dinov2-small-lora/{subdir}/results.json",
+        "DINOv2-S-frozen":REPO_ROOT / f"dino_results/dinov2-small-frozen/{subdir}/results.json",
+        "DINOv2-B-lora": REPO_ROOT / f"dino_results/dinov2-base-lora/{subdir}/results.json",
+        "DINOv2-B-frozen": REPO_ROOT / f"dino_results/dinov2-base-frozen/{subdir}/results.json",
+        "DINOv2-L-lora": REPO_ROOT / f"dino_results/dinov2-large-lora/{subdir}/results.json",
+        "CLIP-B-lora":   REPO_ROOT / f"dino_results/clip-vit-base-lora/{subdir}/results.json",
+        "CLIP-B-frozen": REPO_ROOT / f"dino_results/clip-vit-base-frozen/{subdir}/results.json",
+        "ViT-B-lora":    REPO_ROOT / f"dino_results/vit-base-supervised-lora/{subdir}/results.json",
+        "ViT-B-frozen":  REPO_ROOT / f"dino_results/vit-base-supervised-frozen/{subdir}/results.json",
+    }
+
+MLP_RESULTS:    dict[str, Path] = _probe_results("mlp")
+SPARSE_RESULTS: dict[str, Path] = _probe_results("sparse_logistic")
+
+TRAINING_METRICS: dict[str, Path | dict] = {
+    "CNN": {
+        "val_seq_acc": 0.9569, "val_char_acc": None,
+        "freeze_backbone": False, "train_size": None,
+    },
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_runs/dinov2-small-frozen/metrics.json",
+    "DINOv2-S-lora":    REPO_ROOT / "dino_runs/dinov2-small-lora/metrics.json",
+    "DINOv2-B-lora":    REPO_ROOT / "dino_runs/dinov2-base-lora/metrics.json",
+    "DINOv2-B-frozen":  REPO_ROOT / "dino_runs/dinov2-base-frozen/metrics.json",
+    "DINOv2-L-lora":    REPO_ROOT / "dino_runs/dinov2-large-lora/metrics.json",
+    "CLIP-B-lora":      REPO_ROOT / "dino_runs/clip-vit-base-lora/metrics.json",
+    "CLIP-B-frozen":    REPO_ROOT / "dino_runs/clip-vit-base-frozen/metrics.json",
+    "ViT-B-lora":       REPO_ROOT / "dino_runs/vit-base-supervised-lora/metrics.json",
+    "ViT-B-frozen":     REPO_ROOT / "dino_runs/vit-base-supervised-frozen/metrics.json",
 }
 
-_CONTROL = ("dumb_control", "variation_control")
+TRANSCRIPTION_ACCURACY: dict[str, Path] = {
+    "CNN":              REPO_ROOT / "probe_results/full/transcription_accuracy.json",
+    "DINOv2-S-lora":    REPO_ROOT / "dino_results/dinov2-small-lora/transcription_accuracy.json",
+    "DINOv2-S-frozen":  REPO_ROOT / "dino_results/dinov2-small-frozen/transcription_accuracy.json",
+    "DINOv2-B-lora":    REPO_ROOT / "dino_results/dinov2-base-lora/transcription_accuracy.json",
+    "DINOv2-B-frozen":  REPO_ROOT / "dino_results/dinov2-base-frozen/transcription_accuracy.json",
+    "DINOv2-L-lora":    REPO_ROOT / "dino_results/dinov2-large-lora/transcription_accuracy.json",
+    "CLIP-B-lora":      REPO_ROOT / "dino_results/clip-vit-base-lora/transcription_accuracy.json",
+    "CLIP-B-frozen":    REPO_ROOT / "dino_results/clip-vit-base-frozen/transcription_accuracy.json",
+    "ViT-B-lora":       REPO_ROOT / "dino_results/vit-base-supervised-lora/transcription_accuracy.json",
+    "ViT-B-frozen":     REPO_ROOT / "dino_results/vit-base-supervised-frozen/transcription_accuracy.json",
+    "DINOv2-S":         REPO_ROOT / "dino_results/dinov2-small/transcription_accuracy.json",
+    "DINOv2-B":         REPO_ROOT / "dino_results/dinov2-base/transcription_accuracy.json",
+    "CLIP-B":           REPO_ROOT / "dino_results/clip-vit-base/transcription_accuracy.json",
+}
+
+_CONTROL = ("same_data_control", "same_distribution_control")
 
 _CATEGORIES: dict[str, list[str]] = {
     "Pixel-level noise": ["blur", "dots", "salt_pepper"],
     "Geometric":         ["rotation", "wave", "wavy_line", "easy_line", "hard_line", "two_lines"],
     "Font style":        ["bold", "italic"],
-    "Controls":          ["dumb_control", "variation_control"],
+    "Controls":          ["same_data_control", "same_distribution_control"],
 }
 _PALETTES: dict[str, list[str]] = {
     "Pixel-level noise": ["#1f77b4", "#aec7e8", "#4a90d9"],
@@ -75,7 +121,12 @@ _PALETTES: dict[str, list[str]] = {
 
 def _display(name: str) -> str:
     return {"wave": "letter wave", "easy_line": "horizontal line",
-            "hard_line": "angled line"}.get(name, name).replace("_", " ")
+            "hard_line": "angled line",
+            "same_data_control": "same-data control",
+            "same_distribution_control": "same-distribution control",
+            "dumb_control": "same-data control",
+            "variation_control": "same-distribution control",
+            }.get(name, name).replace("_", " ")
 
 
 def _layer_label(name: str) -> str:
@@ -162,11 +213,34 @@ def plot_per_model_accuracy(
         ys = [v.test_acc if v is not None else float("nan") for v in vals]
         ax.plot(x, ys, marker="o", markersize=4, linewidth=1.6, color=color, alpha=0.85, zorder=2)
 
-    legend_handles = [
+    # Controls as dashed muted baselines
+    control_entries = [
+        ("same_data_control",         "#999999"),
+        ("same_distribution_control", "#bbbbbb"),
+    ]
+    for exp, color in control_entries:
+        if exp not in results:
+            continue
+        vals = [results[exp].get(l) for l in layers]
+        ys = [v.test_acc if v is not None else float("nan") for v in vals]
+        ax.plot(x, ys, linestyle="--", linewidth=1.2, color=color, alpha=0.8, zorder=1)
+
+    from matplotlib.font_manager import FontProperties
+    bold_fp = FontProperties(weight="bold")
+    distortion_handles = [
         mlines.Line2D([], [], color=color, linestyle="-", marker="o",
                       markersize=4, label=_display(exp))
         for exp, color in zip(distortion_exps, flat_colors)
     ]
+    control_handles = [
+        mlines.Line2D([], [], color="none", label="Controls"),
+    ] + [
+        mlines.Line2D([], [], color=color, linestyle="--", linewidth=1.2,
+                      label=_display(exp))
+        for exp, color in control_entries if exp in results
+    ]
+    legend_handles = distortion_handles + control_handles
+
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, rotation=30, ha="right", fontsize=8)
     ax.set_ylabel("Linear probe test accuracy")
@@ -174,12 +248,78 @@ def plot_per_model_accuracy(
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
     ax.set_title(f"Linear probe accuracy across layers — {label}", fontsize=11)
     ax.grid(axis="y", alpha=0.25)
-    ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
-              borderaxespad=0, frameon=True, fontsize=8, handlelength=2.2)
+    leg = ax.legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1),
+                    borderaxespad=0, frameon=True, fontsize=8, handlelength=2.2)
+    for text, handle in zip(leg.get_texts(), leg.legend_handles):
+        if handle.get_color() == "none":
+            text.set_fontproperties(bold_fp)
+            text.set_color("#444")
     fig.tight_layout()
     _save(fig, out, pgf)
     plt.close(fig)
     print(f"  per_model_accuracy.png")
+
+
+def plot_transcription_accuracy(out: Path, val_size: int = 5000, pgf: bool = False) -> None:
+    """Bar chart of val sequence accuracy across all models, with binomial SE error bars.
+
+    Groups LoRA-adapted models together; the frozen baseline is visually distinct.
+    Error bars are ±1 binomial SE = sqrt(p*(1-p)/n) using val_size as n.
+    """
+    import json
+    import matplotlib.pyplot as plt
+
+    labels, accs, errs, colors = [], [], [], []
+    for label, entry in TRAINING_METRICS.items():
+        if isinstance(entry, Path):
+            if not entry.exists():
+                continue
+            m = json.loads(entry.read_text())
+        else:
+            m = entry
+        seq_acc = m.get("val_seq_acc") or m.get("best_val_seq_acc")
+        if seq_acc is None:
+            continue
+        n = m.get("val_size") or val_size
+        se = (seq_acc * (1 - seq_acc) / n) ** 0.5
+        labels.append(label)
+        accs.append(seq_acc)
+        errs.append(se)
+        frozen = m.get("freeze_backbone", False)
+        colors.append("#b0b0b0" if frozen else "#3b6ea5")
+
+    if not labels:
+        print("  transcription_accuracy.png skipped (no metrics.json files found yet)")
+        return
+
+    fig, ax = plt.subplots(figsize=(max(7, 1.5 * len(labels)), 5))
+    x = range(len(labels))
+    bars = ax.bar(x, accs, color=colors, width=0.6,
+                  yerr=errs, capsize=4, error_kw={"elinewidth": 1.2, "ecolor": "#555"})
+
+    for bar, acc, err in zip(bars, accs, errs):
+        ax.text(bar.get_x() + bar.get_width() / 2, acc + err + 0.005,
+                f"{acc:.1%}", ha="center", va="bottom", fontsize=8)
+
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=9)
+    ax.set_ylabel("Val sequence accuracy")
+    ax.set_ylim(0, min(1.05, max(accs) + 0.12))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_title("CAPTCHA transcription accuracy by model\n"
+                 "(LoRA-adapted = blue, frozen backbone = grey)", fontsize=11)
+
+    from matplotlib.patches import Patch
+    ax.legend(handles=[
+        Patch(facecolor="#3b6ea5", label="LoRA-adapted"),
+        Patch(facecolor="#b0b0b0", label="Frozen backbone (heads only)"),
+    ], fontsize=8, loc="lower right")
+
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    _save(fig, out, pgf)
+    plt.close(fig)
+    print(f"  wrote {out.relative_to(REPO_ROOT)}")
 
 
 def plot_depth_curve(models, out: Path, pgf: bool = False) -> None:
@@ -241,6 +381,19 @@ def _short_label(label: str) -> str:
     return label.split(" ")[0]
 
 
+def _compact_layer_label(label: str) -> str:
+    """Short tick labels for narrow, column-oriented plots."""
+    if label.startswith("block_"):
+        return "b" + label.split("_", 1)[1]
+    if label.startswith("conv_block_"):
+        return "cb" + label.rsplit("_", 1)[1]
+    if label == "embedding":
+        return "emb"
+    if label == "logits":
+        return "log"
+    return label
+
+
 def collate_plots(models: list, pgf: bool = False) -> None:
     """For each chart type, produce a single figure with one subplot per model."""
     if not models:
@@ -263,15 +416,51 @@ def collate_plots(models: list, pgf: bool = False) -> None:
     print(f"  collated/heatmap.png")
 
     # ── lines ─────────────────────────────────────────────────────────────────
+    # Column-oriented version for LaTeX documents. One model per row keeps each
+    # subplot readable after fitting the figure to a single column.
+    fig, axes = plt.subplots(n, 1, figsize=(6.8, max(2.8 * n, 4.5)), constrained_layout=True)
+    if n == 1:
+        axes = [axes]
+    legend_handles = None
+    legend_labels = None
+    for ax, (label, res, layers, _act) in zip(axes, models):
+        plot_lines(res, None, layers=layers, title=_short_label(label), ax=ax)
+        if legend_handles is None:
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+        if ax.legend_ is not None:
+            ax.legend_.remove()
+        tick_labels = [_compact_layer_label(t.get_text()) for t in ax.get_xticklabels()]
+        ax.set_xticklabels(tick_labels, rotation=0, ha="center", fontsize=7)
+        ax.set_xlabel("")
+    if len(axes) > 0:
+        axes[-1].set_xlabel("Layer")
+    if legend_handles and legend_labels:
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.005),
+            ncol=3,
+            frameon=True,
+            fontsize=7,
+            handlelength=1.6,
+            columnspacing=1.0,
+        )
+    fig.suptitle("Linear probe accuracy by layer — all models", fontsize=13)
+    _save(fig, out_dir / "lines.png", pgf)
+    plt.close(fig)
+    print(f"  collated/lines.png")
+
+    # Also preserve the old wide layout for slides or desktop inspection.
     fig, axes = plt.subplots(1, n, figsize=(9 * n, 5), constrained_layout=True)
     if n == 1:
         axes = [axes]
     for ax, (label, res, layers, _act) in zip(axes, models):
         plot_lines(res, None, layers=layers, title=_short_label(label), ax=ax)
     fig.suptitle("Linear probe accuracy by layer — all models", fontsize=13)
-    _save(fig, out_dir / "lines.png", pgf)
+    _save(fig, out_dir / "lines_wide.png", pgf)
     plt.close(fig)
-    print(f"  collated/lines.png")
+    print(f"  collated/lines_wide.png")
 
     # ── full_layers ───────────────────────────────────────────────────────────
     fig, axes = plt.subplots(1, n, figsize=(11 * n, 5), constrained_layout=True)
@@ -311,117 +500,52 @@ def collate_plots(models: list, pgf: bool = False) -> None:
     print(f"  collated/categories.png")
 
 
-def plot_full_layers_stacked(models: list, out: Path, pgf: bool = False) -> None:
-    """Vertically stacked full-layer line charts — one panel per model, one shared legend."""
-    if not models:
+def write_transcription_accuracy_csv(out: Path) -> None:
+    """Write charts/transcription_accuracy.csv — one row per model with overall accuracy.
+
+    Accuracy is averaged across all distortion experiments (controls excluded).
+    Columns: model, seq_acc, char_acc.
+    """
+    import csv
+    import json
+
+    _CONTROLS = {"same_data_control", "same_distribution_control", "dumb_control", "variation_control"}
+
+    rows = []
+    for label, path in TRANSCRIPTION_ACCURACY.items():
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text())
+        seq_accs, char_accs = [], []
+        for exp, splits in data.items():
+            if exp in _CONTROLS:
+                continue
+            test = splits.get("test", {})
+            for key in ("batch_a_seq_acc", "batch_b_seq_acc"):
+                v = test.get(key)
+                if v is not None:
+                    seq_accs.append(v)
+            for key in ("batch_a_char_acc", "batch_b_char_acc"):
+                v = test.get(key)
+                if v is not None:
+                    char_accs.append(v)
+        if not seq_accs:
+            continue
+        rows.append({
+            "model": label,
+            "seq_acc": round(sum(seq_accs) / len(seq_accs), 4),
+            "char_acc": round(sum(char_accs) / len(char_accs), 4) if char_accs else "",
+        })
+
+    if not rows:
+        print("  transcription_accuracy.csv skipped (no data)")
         return
 
-    import matplotlib.lines as mlines
-    from matplotlib.font_manager import FontProperties
-    from probe.plot import _CATEGORIES, _PALETTES, _display
-
-    n = len(models)
-    PANEL_H = 2.8   # inches per panel
-    FIG_W   = 7.0   # full text width
-    LEG_W   = 0.28  # fraction of figure width reserved for legend on the right
-
-    fig, axes = plt.subplots(n, 1, figsize=(FIG_W, n * PANEL_H),
-                             squeeze=False, constrained_layout=False)
-    axes = [ax[0] for ax in axes]
-
-    fig.subplots_adjust(left=0.07, right=1 - LEG_W - 0.01,
-                        top=0.97, bottom=0.06, hspace=0.45)
-
-    bold_fp   = FontProperties(weight="bold")
-    normal_fp = FontProperties()
-
-    # Build legend handles once from the union of all experiments
-    all_exps: set[str] = set()
-    for _, res, _, _ in models:
-        all_exps |= set(res.keys())
-
-    legend_handles: list = []
-    for cat, exps in _CATEGORIES.items():
-        present = [e for e in exps if e in all_exps]
-        if not present:
-            continue
-        colors = _PALETTES[cat]
-        legend_handles.append(mlines.Line2D([], [], color="none", label=cat))
-        for i, exp in enumerate(exps):
-            if exp not in all_exps:
-                continue
-            is_control = cat == "Controls"
-            legend_handles.append(mlines.Line2D(
-                [], [],
-                color=colors[i % len(colors)],
-                linestyle="--" if is_control else "-",
-                marker="o", markersize=3.5,
-                label=_display(exp),
-            ))
-
-    # Draw each panel
-    for ax, (label, res, layers, _) in zip(axes, models):
-        layer_list = [l for l in layers
-                      if any(not np.isnan(
-                          res[e][l].test_acc if l in res.get(e, {}) else float("nan")
-                      ) for e in res)]
-
-        # Background shading for bookend zones
-        input_idx  = next((i for i, l in enumerate(layer_list) if l == "input"),  None)
-        logits_idx = next((i for i, l in enumerate(layer_list) if l == "logits"), None)
-        x = list(range(len(layer_list)))
-
-        if input_idx is not None:
-            ax.axvspan(-0.5, input_idx + 0.5, color="#f5e6cc", alpha=0.5, zorder=0)
-            ax.text(input_idx, 1.005, "raw\npixels",
-                    ha="center", va="bottom", fontsize=6, color="#8B6914")
-        if logits_idx is not None:
-            ax.axvspan(logits_idx - 0.5, len(layer_list) - 0.5,
-                       color="#d4edda", alpha=0.5, zorder=0)
-            ax.text(logits_idx, 1.005, "model\noutput",
-                    ha="center", va="bottom", fontsize=6, color="#2d6a4f")
-
-        for cat, exps in _CATEGORIES.items():
-            colors = _PALETTES[cat]
-            is_control = cat == "Controls"
-            for i, exp in enumerate(exps):
-                if exp not in res:
-                    continue
-                ys = [res[exp][l].test_acc if l in res[exp] else float("nan")
-                      for l in layer_list]
-                ax.plot(x, ys,
-                        marker="o", markersize=3, linewidth=1.4,
-                        linestyle="--" if is_control else "-",
-                        color=colors[i % len(colors)], alpha=0.85, zorder=2)
-
-        xlabels = [l.replace("conv_block_", "cb").replace("block_", "blk ") for l in layer_list]
-        ax.set_xticks(x)
-        ax.set_xticklabels(xlabels, rotation=20, ha="right", fontsize=7)
-        ax.set_ylim(0.45, 1.08)
-        ax.set_ylabel("Probe acc.", fontsize=8)
-        ax.axhline(0.5, color="black", linewidth=0.7, linestyle=":", alpha=0.5)
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
-        ax.grid(axis="y", alpha=0.25)
-        ax.set_title(label, fontsize=9, pad=3)
-
-    # Single shared legend pinned to the right of the figure
-    leg = fig.legend(
-        handles=legend_handles,
-        loc="center left",
-        bbox_to_anchor=(1 - LEG_W + 0.01, 0.5),
-        bbox_transform=fig.transFigure,
-        frameon=True, fontsize=7.5, handlelength=2,
-        borderpad=0.6, labelspacing=0.35,
-    )
-    for text, handle in zip(leg.get_texts(), legend_handles):
-        if handle.get_color() == "none":
-            text.set_fontproperties(bold_fp)
-            text.set_color("#333333")
-        else:
-            text.set_fontproperties(normal_fp)
-
-    _save(fig, out, pgf)
-    plt.close(fig)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["model", "seq_acc", "char_acc"])
+        writer.writeheader()
+        writer.writerows(rows)
     print(f"  wrote {out.relative_to(REPO_ROOT)}")
 
 
@@ -484,12 +608,30 @@ def main() -> None:
             plot_linear_vs_mlp(res, mlp_res, out_dir / "linear_vs_mlp.png", layers=layers, pgf=args.pgf)
             print(f"  linear_vs_mlp.png")
 
+        sparse_path = SPARSE_RESULTS.get(label)
+        if sparse_path and sparse_path.exists():
+            sparse_res = load_results(sparse_path)
+            plot_linear_vs_mlp(res, sparse_res, out_dir / "linear_vs_sparse.png", layers=layers, pgf=args.pgf)
+            print(f"  linear_vs_sparse.png")
+            plot_sparsity(sparse_res, layers, out_dir / "sparsity.png", title=f"Probe sparsity — {label}", pgf=args.pgf)
+            print(f"  sparsity.png")
+
+        acc_path = TRANSCRIPTION_ACCURACY.get(label)
+        if acc_path and acc_path.exists():
+            import json
+            acc_data = json.loads(acc_path.read_text())
+            plot_task_accuracy(acc_data, out_dir / "task_accuracy.png", label=label, pgf=args.pgf)
+            print(f"  task_accuracy.png")
+        else:
+            print(f"  task_accuracy.png skipped (no transcription_accuracy.json)")
+
     print(f"\nCollated charts -> charts/collated/")
     collate_plots(models, pgf=args.pgf)
     plot_depth_curve(models, CHARTS_DIR / "collated" / "decodability_vs_depth.png", pgf=args.pgf)
     if len(models) > 1:
         plot_peak_vs_output(models, CHARTS_DIR / "collated" / "peak_vs_output.png", pgf=args.pgf)
-    plot_full_layers_stacked(models, CHARTS_DIR / "collated" / "full_layers_stacked.png", pgf=args.pgf)
+    plot_transcription_accuracy(CHARTS_DIR / "transcription_accuracy.png", pgf=args.pgf)
+    write_transcription_accuracy_csv(CHARTS_DIR / "transcription_accuracy.csv")
     print("Done.")
 
 
