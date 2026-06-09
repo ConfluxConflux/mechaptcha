@@ -310,9 +310,9 @@ def write_distortion_count_accuracy_figure(
     ax.errorbar(x_values, exact_match, yerr=exact_error, marker="o", linewidth=2, capsize=4, label="Exact match")
     for x_value, y_value, example_count in zip(x_values, exact_match, example_counts):
         ax.annotate(f"n={example_count}", (x_value, y_value), textcoords="offset points", xytext=(0, -16), ha="center")
-    ax.set_xlabel("# active distortions")
+    ax.set_xlabel("# active perturbations")
     ax.set_ylabel("Accuracy")
-    ax.set_title("Validation accuracy by number of active distortions")
+    ax.set_title("Validation accuracy by number of active perturbations")
     ax.set_xticks(x_values)
     ax.set_ylim(0.0, 1.01)
     ax.grid(axis="y", alpha=0.3)

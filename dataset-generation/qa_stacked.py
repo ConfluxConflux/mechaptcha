@@ -66,19 +66,19 @@ def make_qa():
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
         distortion_str = ", ".join(sorted(active)) if active else "none"
-        ax.set_title(f'text: "{text}" | distortions: {distortion_str}',
+        ax.set_title(f'text: "{text}" | perturbations: {distortion_str}',
                      fontsize=7, pad=2, loc="left")
 
     # ── Divider ─────────────────────────────────────────────────────────────
     div_ax = axes[n_stacked]
     div_ax.axis("off")
-    div_ax.text(0.5, 0.5, "SECTION 2: each distortion in isolation",
+    div_ax.text(0.5, 0.5, "SECTION 2: each perturbation in isolation",
                 ha="center", va="center", fontsize=9, fontweight="bold",
                 transform=div_ax.transAxes)
 
     # ── Section 2: isolation ─────────────────────────────────────────────────
     isolation_seed = 2000
-    isolation_items = [("clean (no distortion)", set())] + \
+    isolation_items = [("clean (no perturbation)", set())] + \
                       [(k, {k}) for k in DISTORTION_KEYS]
 
     for j, (label, active) in enumerate(isolation_items):
@@ -86,7 +86,7 @@ def make_qa():
         ax = axes[n_stacked + 1 + j]
         ax.imshow(arr, cmap="gray", vmin=0, vmax=255)
         ax.axis("off")
-        ax.set_title(f'text: "{text}" | distortion: {label}',
+        ax.set_title(f'text: "{text}" | perturbation: {label}',
                      fontsize=7, pad=2, loc="left")
     out = Path("qa_stacked.png")
     plt.savefig(out, dpi=150, bbox_inches="tight")
